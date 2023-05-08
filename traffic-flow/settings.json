@@ -1,0 +1,37 @@
+{
+  "Vehicle": {
+    "global": {
+      "safe-lc-acc": -8,
+      "cannot-lc": -10,
+      "no-lc": -3,
+      "mobile-lc": 0.1
+    },
+    "HV": {
+      "desire-speed-main": 27.78,
+      "desire-speed-ramp": 16.67,
+      "max-acc": 0.8,
+      "desire-dec": 2,
+      "jam-dist": 2,
+      "time-gap": 2
+  },
+    "CAV": {
+      "desire-speed-main": 27.78,
+      "desire-speed-ramp": 16.67,
+      "max-acc": 1,
+      "desire-dec": 2,
+      "jam-dist": 2,
+      "time-gap-hv": 1.5,
+      "time-gap-cav": 1
+    }
+  },
+  "Simulation": {
+    "num-epochs": 500
+  },
+  "Scenario": {
+    "num-lane": 3,
+    "lane-len": 3500,
+    "lane-start": -500,
+    "lane-end": 3000,
+    "is-ramp": 1
+  }
+}
