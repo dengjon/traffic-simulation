@@ -70,16 +70,15 @@ class Vehicle(object):
 
 		self.__restore_states()
 
-	def move_to_lane(self, new_lane: Lane):
+	def move_to_lane(self, front_vehicle, new_lane: Lane):
 		"""
 		Move the vehicle to a new lane
 
+		:param front_vehicle: the front vehicle in the new lane
 		:param new_lane: the new lane to move to
 		"""
 		# Remove the vehicle from its current lane
 		self.lane.fleet.remove_vehicle(self)
-
-		front_vehicle = self.__get_adjacent_lead_vehicle(new_lane)
 
 		# Add the vehicle to the new lane
 		new_lane.fleet.add_vehicle(self, front_vehicle)
@@ -87,9 +86,9 @@ class Vehicle(object):
 		# Update the vehicle's lane attribute to the new lane
 		self.lane = new_lane
 
-	def __get_adjacent_lead_vehicle(self, target_lane: Lane):
+	def get_adjacent_front_vehicle(self, target_lane: Lane):
 		"""
-		Get the lead vehicle in the target lane which the target vehicle in the current lane is going to follow
+		Get the front vehicle in the target lane which the target vehicle in the current lane is going to follow
 		after lane changing.
 
 		:param target_lane: The target lane that the target vehicle is going to change into.
