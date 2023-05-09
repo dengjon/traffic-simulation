@@ -1,4 +1,8 @@
-Lane-changing: 需要根据MOBIL模型来编写
-Car-following: 
-1. HV: 基本的IDM模型
-2. CAV: 有多车信息结合的IDM模型
+# Introduction
+This repository is created for beginners to implement traffic flow simulation and the main part of this repository is under development.
+
+# Code structure
+
+`platoon-control`: Single-lane platoon simulation with IDM.
+
+`traffic flow/`: Multi-lane traffic flow simulation with IDM car-following model and MOBIL lane-changing model.
