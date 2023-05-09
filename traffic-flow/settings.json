@@ -1,37 +1,33 @@
 {
   "Vehicle": {
-    "global": {
-      "safe-lc-acc": -8,
-      "cannot-lc": -10,
-      "no-lc": -3,
-      "mobile-lc": 0.1
-    },
     "HV": {
-      "desire-speed-main": 27.78,
-      "desire-speed-ramp": 16.67,
-      "max-acc": 0.8,
-      "desire-dec": 2,
-      "jam-dist": 2,
-      "time-gap": 2
-  },
+      "len": 4,
+      "min_speed": 0,
+      "reaction_time": 1.5,
+      "desired_speed_main": 25,
+      "desired_speed_ramp": 16.67,
+      "max_acc": 1.35,
+      "desire_dec": 2,
+      "jam_distance": 2
+    },
     "CAV": {
-      "desire-speed-main": 27.78,
-      "desire-speed-ramp": 16.67,
-      "max-acc": 1,
-      "desire-dec": 2,
-      "jam-dist": 2,
-      "time-gap-hv": 1.5,
-      "time-gap-cav": 1
+      "len": 4,
+      "min_speed": 0,
+      "reaction_time": 1.5,
+      "desired_speed": 25,
+      "max_acc": 1.35,
+      "desire_dec": 2,
+      "jam_distance": 2
     }
   },
   "Simulation": {
-    "num-epochs": 500
+    "len_platoon": 10,
+    "num_epochs": 200
   },
   "Scenario": {
-    "num-lane": 3,
-    "lane-len": 3500,
-    "lane-start": -500,
-    "lane-end": 3000,
-    "is-ramp": 1
+    "num_lane": 1,
+    "lane_len": 3500,
+    "lane_start": -500,
+    "lane_end": 3000
   }
 }

@@ -20,9 +20,9 @@ class Platoon(object):
 		if self.platoon_len > 0:
 			# Add new vehicle at the tail of the platoon
 			last_veh = self.last_veh
-			last_veh.after_veh = veh
+			last_veh.rear_vehicle = veh
 			# Update
-			veh.front_veh = last_veh
+			veh.front_vehicle = last_veh
 			self.last_veh = veh
 		else:
 			self.first_veh = veh
@@ -42,22 +42,22 @@ class Platoon(object):
 		for veh in self:
 			# update position and speed of each vehicle
 			speed_before = veh.speed
-			veh.speed = max(veh.speed_min, veh.speed + veh.acc * time_step)
-			veh.pos = veh.pos + speed_before * time_step + 1 / 2 * veh.acc + time_step ** 2
-			if veh.pos > veh.target_pos:
+			veh.speed = max(veh.min_speed, veh.speed + veh.acc * time_step)
+			veh.position = veh.position + speed_before * time_step + 1 / 2 * veh.acc + time_step ** 2
+			if veh.position > veh.target_pos:
 				# if the vehicle reaches its destination, delete it
-				if veh.front_veh is not None:
+				if veh.front_vehicle is not None:
 					# not the leading vehicle
-					veh.front_veh.after_veh = veh.after_veh
+					veh.front_vehicle.rear_vehicle = veh.rear_vehicle
 				else:
 					# is the leading vehicle
-					self.first_veh = veh.after_veh
-				if veh.after_veh is not None:
+					self.first_veh = veh.rear_vehicle
+				if veh.rear_vehicle is not None:
 					# not the last vehicle
-					veh.after_veh.front_veh = veh.front_veh
+					veh.rear_vehicle.front_vehicle = veh.front_vehicle
 				else:
 					# is the last vehicle
-					self.last_veh = veh.front_veh
+					self.last_veh = veh.front_vehicle
 				# update the platoon length
 				self.platoon_len -= 1
 		if self.first_veh is not None:
@@ -65,7 +65,7 @@ class Platoon(object):
 			if self.first_veh.pos > self.lane.end:
 				# if it has a following vehicle
 				if self.first_veh.after_veh is not None:
-					self.first_veh.after_veh.front_veh = None
+					self.first_veh.after_veh.front_vehicle = None
 					self.first_veh = self.first_veh.after_veh
 				else:
 					# The platoon has only one vehicle
@@ -85,7 +85,7 @@ class Platoon(object):
 		assert 0 <= index < self.platoon_len
 		veh_curr = self.first_veh
 		for i in range(index):
-			veh_curr = veh_curr.after_veh
+			veh_curr = veh_curr.rear_vehicle
 		return veh_curr
 
 	def __iter__(self):
