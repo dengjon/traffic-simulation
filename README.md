@@ -11,23 +11,61 @@ This repository is created for beginners to implement traffic flow simulation an
 
 # Dev log
 
-如果车辆要换道，那么需要判断当前车道上前后车辆是否满足条件，同时还需要判断目标车道上的前后车辆是否满足条件。
+文件目录：
 
-换道行为应该属于`fleet`而不是属于车辆本身。如何进行判断？
+- `models.py`：car-following and lane-changing functions
 
-Vehicle应该包含的方法：
+  1. `IDM`: car-following functions for human drivers
 
+  - Attributes: 
+  - Functions:
+    `get_acceleration`: calculates the acceleration of a vehicle based on the Intelligent Driver Model (IDM)
 
+  2. `ACC`: car-following functions for automated vehicles
+     `get_acceleration`: calculates the acceleration of an automated vehicle based on the Adaptive Cruise Control (ACC) model.
+
+  3. `MOBIL`: lane-changing functions for human drivers
+
+     - Attributes:
+
+     - Functions:
+       1. `can_change_lane`: checks whether a vehicle can change lanes based on the MOBIL (Minimizing Overall Braking Induced by Lane changes) model
+       2. `get_lane_change_direction`: determines the direction of the lane change (left, right, or none) based on the MOBIL model
+
+- `vehicle.py`:  abstract classes of various vehicles
+  - `Vehicle`: parent class of various vehicles
+    - Attributes: `length`, `lane`, `position`, `speed`, and `type` .
+    - Functions:
+      `update`: updates the vehicle's position and speed based on the acceleration calculated by the car-following model
+  - `HV`: human-driving vehicles (Inherits from `Vehicle`).
+    - Functions:
+      `get_acceleration`: calculates the acceleration of a human-driven vehicle based on the car-following model (IDM or ACC).
+  - `AV`: automated vehicles
+  - `CAV`: connected and automated vehicles
+
+- `road.py`: road class to accommodate vehicles
+  - Attributes:
+    - `lane_list`: list to accommodate different types of lane
+  - Functions:
+
+- `lane.py`: lane class to represent different types of lane
+  - Attributes:
+    - `lane_type`: type of lane
+  - Functions:
+    - `add_vehicle`: adds a vehicle to the road at the specified position and lane.
+    - `remove_vehicle`: removes a vehicle from the road.
+    - `check_collisions`: check for collisions between vehicles
+    - `update`: updates the position and speed of all vehicles on the road based on their acceleration calculated by the car-following model. This function should also handle lane changing based on the MOBIL model.
 
 
 
 **ChatGPT magic code **
 
-Simuate the multi-lane traffic flow with Python. The code is based on Object-Oriented programming and seprate the code into different files. The requirements are given below:
+Simulate the multi-lane traffic flow with Python. The code is based on Object-Oriented programming and separate the code into different files. The requirements are given below:
 
 1. Add the packages needed in the code automatically.
-2. Define <Vehicle> class will be writen in <Vehicle.py> file. Vehicles update their position and speed based on IDM car-following model and MOBIL lane-changing model.
-3. Define <Lane> class which will be writen in <Lane.py> file. The Lane has a start and a end and it has two types, which are "Main" and "Ramp". Vehicles could get off the Main road via off ramp.
+2. Define <Vehicle> class will be written in <Vehicle.py> file. Vehicles update their position and speed based on IDM car-following model and MOBIL lane-changing model.
+3. Define <Lane> class which will be written in <Lane.py> file. The Lane has a start and a end and it has two types, which are "Main" and "Ramp". Vehicles could get off the Main road via off ramp.
 4. Integrate the params into a <.json> file and load it in the program while using it.
 5. Write a <main.py> to implement the whole process and record vehicles' speed, acceleration, and position. After the simulation, draw a plot to represent the traffic flow on the road.
 6. The order of generating these codes are: settings.json, Vehicle, Lane, main
