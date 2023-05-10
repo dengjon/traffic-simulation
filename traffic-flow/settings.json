@@ -1,7 +1,7 @@
 {
   "Vehicle": {
     "HV": {
-      "len": 4,
+      "length": 4,
       "min_speed": 0,
       "reaction_time": 1.5,
       "desired_speed_main": 25,
@@ -11,7 +11,7 @@
       "jam_distance": 2
     },
     "CAV": {
-      "len": 4,
+      "length": 4,
       "min_speed": 0,
       "reaction_time": 1.5,
       "desired_speed": 25,

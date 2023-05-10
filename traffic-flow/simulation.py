@@ -1,10 +1,10 @@
 # coding=UTF-8
 import random
 
-import Lane
+import lane
 from Platoon import *
-from Lane import *
-from Vehicle import *
+from lane import *
+from vehicle import *
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
