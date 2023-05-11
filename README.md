@@ -57,6 +57,23 @@ This repository is created for beginners to implement traffic flow simulation an
     - `check_collisions`: check for collisions between vehicles
     - `update`: updates the position and speed of all vehicles on the road based on their acceleration calculated by the car-following model. This function should also handle lane changing based on the MOBIL model.
 
+- `platoon.py`: vehicle platoon
+
+  - **Attributes:**
+
+    - `leader`: The leading vehicle of the platoon.
+    - `rear_vehicle`: The trailing vehicle of the platoon.
+    - `num_vehicles`: The number of vehicles in the platoon.
+
+  - **Methods:**
+
+    - `add_vehicle(vehicle)`: Adds a new vehicle to the platoon.
+    - `remove_vehicle(vehicle)`: Removes a vehicle from the platoon.
+    - `split_platoon(vehicle)`: Splits the platoon into two separate platoons at the given vehicle.
+
+    
+
+
 
 
 **ChatGPT magic code **
