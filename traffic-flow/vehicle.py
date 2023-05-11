@@ -1,5 +1,7 @@
 from models import *
 import copy
+from platoon import Platoon
+from typing import Optional
 
 
 class Vehicle(object):
@@ -13,8 +15,9 @@ class Vehicle(object):
 		self.acc = init_acc
 
 		# Properties to update
-		self.front_vehicle = None
-		self.rear_vehicle = None
+		self.front_vehicle: Optional[Vehicle] = None
+		self.rear_vehicle: Optional[Vehicle] = None
+		self.platoon: Optional[Platoon] = None
 
 		# Parameters to overwrite
 		self.lane_change_indicator = False
@@ -50,6 +53,35 @@ class Vehicle(object):
 		acc = self.get_acceleration()
 		self.speed += acc * time_step
 		self.position += self.speed * time_step
+
+	def get_adjacent_lead_vehicle(self, target_lane: Lane) -> Optional[Vehicle]:
+		"""
+		Get the lead vehicle in the target lane which the target vehicle in the current lane is going to follow
+		after lane changing.
+
+		:param target_lane: The target lane that the target vehicle is going to change into.
+		:return: The lead vehicle in the target lane or None if no lead vehicle is found.
+		"""
+
+		# Initialize the lead vehicle and minimum distance to infinity and target vehicle to None
+		lead_vehicle = None
+		min_distance = float('inf')
+		target_vehicle = None
+
+		# Loop through all the vehicles in the target lane
+		for vehicle in target_lane.vehicles:
+
+			# Calculate the relative distance between the current vehicle and the target vehicle
+			relative_dist = vehicle.position - self.position
+
+			# If the relative distance is greater than 0 and less than the minimum distance so far
+			if 0 < relative_dist < min_distance:
+				# Update the minimum distance and the lead vehicle
+				min_distance = relative_dist
+				lead_vehicle = vehicle
+
+		# Return the lead vehicle or None if no lead vehicle is found
+		return lead_vehicle
 
 
 class HV(Vehicle):
