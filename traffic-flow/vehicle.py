@@ -83,6 +83,30 @@ class Vehicle(object):
 		# Return the lead vehicle or None if no lead vehicle is found
 		return lead_vehicle
 
+	def move_to_lane(self, new_lane: Lane):
+		"""
+		Move the vehicle to a new lane
+
+		:param new_lane: the new lane to move to
+		"""
+		# Remove the vehicle from its current lane
+		self.lane.remove_vehicle(self)
+
+		# Find the closest front vehicle on the new lane
+		min_dist = float('inf')
+		front_vehicle = None
+		for vehicle in new_lane.vehicles:
+			delta_dist = vehicle.position - self.position
+			if 0 < delta_dist < min_dist:
+				min_dist = delta_dist
+				front_vehicle = vehicle
+
+		# Add the vehicle to the new lane
+		new_lane.add_vehicle(self, front_vehicle)
+
+		# Update the vehicle's lane attribute to the new lane
+		self.lane = new_lane
+
 
 class HV(Vehicle):
 	def __init__(self, vehicle_id: int, init_speed: int, init_lane: Lane,

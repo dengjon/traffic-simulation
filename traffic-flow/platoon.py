@@ -1,5 +1,5 @@
 from typing import List, Optional
-from vehicle import *
+from vehicle import Vehicle
 
 
 class Platoon(object):

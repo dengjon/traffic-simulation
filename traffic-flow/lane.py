@@ -1,12 +1,24 @@
 from vehicle import Vehicle
 from typing import Optional
 from models import *
+import unittest
 
 
 class Lane:
 	def __init__(self, length, max_speed, start, end, lane_type,
 	             left_lane=None, right_lane=None, capacity=1600):
-		# Initialize the properties of the lane
+		"""
+		Initializes the properties of a lane.
+
+		:param length: Length of the lane
+		:param max_speed: Maximum speed allowed on the lane
+		:param start: Start point of the lane
+		:param end: End point of the lane
+		:param lane_type: Type of the lane (e.g. 'straight', 'left-turn-only', etc.)
+		:param left_lane: The neighboring lane to the left
+		:param right_lane: The neighboring lane to the right
+		:param capacity: Maximum number of vehicles that can be on the lane
+		"""
 		self.length = length
 		self.max_speed = max_speed
 		self.capacity = capacity
@@ -14,9 +26,9 @@ class Lane:
 		self.end = end
 		self.left_lane: Optional[Lane] = left_lane
 		self.right_lane: Optional[Lane] = right_lane
-		self.num_vehicle = 0
-		self.front_vehicle: Optional[Vehicle] = None
-		self.rear_vehicle: Optional[Vehicle] = None
+		self.num_vehicle = 0  # Number of vehicles currently on the lane
+		self.front_vehicle: Optional[Vehicle] = None  # The vehicle at the front of the lane
+		self.rear_vehicle: Optional[Vehicle] = None  # The vehicle at the back of the lane
 		self.type = lane_type
 		self.vehicles = []  # List to hold the vehicles currently on the lane
 		self.lanes = []  # List of neighboring lanes
@@ -95,11 +107,10 @@ class Lane:
 			acceleration = vehicle.get_acceleration()
 
 			# Handle lane changing based on the MOBIL model
-			if mobil.can_change_lane(vehicle, 'left'):
+			if mobil.can_change_lane(vehicle, 'left', dt):
 				new_lane = self.left_lane
 				if new_lane is not None:
-					if self._can_move_to_lane(i, new_lane):
-						self._move_to_lane(i, new_lane)
+					vehicle.move_to_lane(new_lane)
 
 			# Update the vehicle's speed and position based on the acceleration
 			vehicle.speed += acceleration * dt
@@ -108,10 +119,6 @@ class Lane:
 			elif vehicle.speed > self.max_speed:
 				vehicle.speed = self.max_speed
 			vehicle.position += vehicle.speed
-
-			# Wrap around if necessary
-			if vehicle.position >= self.length:
-				vehicle.position -= self.length
 
 	def get_neighbor_density(self, vehicle: Vehicle, direction: str) -> float:
 		"""
@@ -150,5 +157,28 @@ class Lane:
 		return density
 
 
+class LaneTestCase(unittest.TestCase):
+	def test_add_vehicle(self):
+		# Create test objects (lane, vehicles, and target front vehicle)
+		lane1 = Lane(length=100, max_speed=50, start=(0, 0), end=(100, 0), lane_type='straight')
+		lane2 = Lane(length=100, max_speed=50, start=(0, 0), end=(100, 0), lane_type='straight')
+		vehicle1 = Vehicle(vehicle_id=1, init_speed=30, init_lane=lane1, init_pos=0, init_acc=0)
+		vehicle2 = Vehicle(vehicle_id=2, init_speed=20, init_lane=lane2, init_pos=50, init_acc=0)
+		target_front_vehicle = Vehicle(vehicle_id=3, init_speed=25, init_lane=lane1, init_pos=40, init_acc=0)
+
+		# Test adding a vehicle with no target front vehicle
+		lane1.add_vehicle(vehicle1)
+		self.assertEqual(lane1.front_vehicle, vehicle1)
+		self.assertEqual(lane1.rear_vehicle, vehicle1)
+		self.assertEqual(lane1.num_vehicle, 1)
+
+		# Test adding a vehicle with a target front vehicle
+		lane1.add_vehicle(vehicle2, target_front_vehicle)
+		self.assertEqual(target_front_vehicle.rear_vehicle, vehicle2)
+		self.assertEqual(vehicle2.front_vehicle, target_front_vehicle)
+		self.assertEqual(lane1.rear_vehicle, vehicle2)
+		self.assertEqual(lane1.num_vehicle, 2)
+
+
 if __name__ == '__main__':
-	print('hello')
+	unittest.main()

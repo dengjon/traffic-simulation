@@ -1,7 +1,5 @@
 import math
 import numpy as np
-from lane import Lane
-from vehicle import Vehicle
 
 
 class IDM(object):
@@ -95,7 +93,7 @@ class MOBIL:
 		self.politeness_factor = politeness_factor
 		self.lane_change_duration = lane_change_duration
 
-	def can_change_lane(self, vehicle: Vehicle, direction: str, dt: float) -> bool:
+	def can_change_lane(self, vehicle, direction: str, dt: float) -> bool:
 		"""
 		Checks whether a vehicle can change lanes based on the MOBIL (Minimizing Overall Braking Induced by Lane changes) model.
 
@@ -129,7 +127,7 @@ class MOBIL:
 		# Return whether the incentive is greater than the minimum threshold
 		return incentive > self.delta
 
-	def _calculate_acceleration_gain(self, vehicle: Vehicle, adjacent_lane: Lane, dt: float) -> float:
+	def _calculate_acceleration_gain(self, vehicle, adjacent_lane, dt: float) -> float:
 		"""
 		Calculates the acceleration gain from changing lanes based on the MOBIL model.
 
@@ -170,7 +168,7 @@ class MOBIL:
 		# Scale the acceleration gain by the time step for the simulation.
 		return acc_gain * dt
 
-	def _calculate_lane_change_gain(self, vehicle: Vehicle, current_lane: Lane, adjacent_lane: Lane) -> float:
+	def _calculate_lane_change_gain(self, vehicle, current_lane, adjacent_lane) -> float:
 		"""
 		Calculates the gain from changing lanes to the given adjacent lane.
 
@@ -200,29 +198,28 @@ class MOBIL:
 			# Raise an error if the provided lane is not an adjacent lane
 			raise ValueError("Provided lane is not an adjacent lane.")
 
-	def _get_lane_change_direction(self, vehicle: Vehicle, current_lane: Lane, left_lane: Lane, right_lane: Lane,
+	def _get_lane_change_direction(self, vehicle, left_lane, right_lane,
 	                               dt: float) -> str:
 		"""
 		Determines the direction of the lane change (left, right, or none) based on the MOBIL model
 
 		:param vehicle: The vehicle to check for a lane change
-		:param current_lane: The current lane of the vehicle
 		:param left_lane: The lane to the left of the current lane
 		:param right_lane: The lane to the right of the current lane
 		:param dt: The time step of the simulation
 		:return: The direction of the lane change, either 'left', 'right', or 'none'
 		"""
 		# Check if changing lanes to the left lane is possible
-		if left_lane and self.can_change_lane(vehicle, dt):
+		if left_lane and self.can_change_lane(vehicle, 'left', dt):
 			return 'left'
 
 		# Check if changing lanes to the right lane is possible
-		if right_lane and self.can_change_lane(vehicle, dt):
+		if right_lane and self.can_change_lane(vehicle, 'right', dt):
 			return 'right'
 
 		return 'none'
 
-	def get_braking_rate(self, vehicle: Vehicle, dt: float) -> float:
+	def get_braking_rate(self, vehicle, dt: float) -> float:
 		"""
 		Calculates the braking rate of a vehicle based on its current acceleration and velocity
 
@@ -247,4 +244,3 @@ class MOBIL:
 		braking_rate = self.delta * delta_acc / self.max_dec
 
 		return braking_rate
-
