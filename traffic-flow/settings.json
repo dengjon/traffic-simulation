@@ -28,6 +28,7 @@
     "num_lane": 1,
     "lane_len": 3500,
     "lane_start": -500,
-    "lane_end": 3000
+    "lane_end": 3000,
+    "max_speed": 33.33
   }
 }

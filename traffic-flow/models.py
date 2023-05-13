@@ -115,6 +115,9 @@ class MOBIL:
 		else:
 			target_lane = current_lane.right_lane
 
+		if target_lane is None:
+			return False
+
 		# Calculate the acceleration gain from the lane change
 		acceleration_gain = self._calculate_acceleration_gain(vehicle, target_lane, dt)
 
