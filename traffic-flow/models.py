@@ -1,5 +1,7 @@
 import math
 import numpy as np
+import copy
+from typing import List, Union, Optional, Tuple
 
 
 class IDM(object):
@@ -71,29 +73,23 @@ class ACC(object):
 
 
 class MOBIL:
-	def __init__(self, accel_threshold: float = 0.5, brake_threshold: float = -3.0, max_acc: float = 3.0,
-	             max_dec: float = -8.0, politeness_factor: float = 0.3, lane_change_duration: float = 5.0):
+	def __init__(self, accel_threshold: float = 0.5, brake_threshold: float = -3.0,
+	             delta: float = 0, politeness_factor: float = 0.3):
 		"""
 		Initializes an instance of the MOBIL (Minimizing Overall Braking Induced by Lane changes) class with the
 		specified parameters.
 
 		:param accel_threshold: The acceleration threshold for considering a vehicle to be in a "safe gap".
 		:param brake_threshold: The braking threshold for considering a vehicle to be in a "safe gap".
-		:param max_acc: The maximum acceleration for the vehicle.
-		:param max_dec: The maximum deceleration for the vehicle.
+		:param delta: MOBIL model parameter delta
 		:param politeness_factor: A factor used to determine the probability of a lane change.
-		:param lane_change_duration: The duration of a lane change in seconds.
 		"""
-		self.accel_threshold = accel_threshold
-		self.brake_threshold = brake_threshold
-		self.max_acc = max_acc
-		self.max_dec = max_dec
-		self.beta = 0.5  # Placeholder for the MOBIL model parameter beta
-		self.delta = 4.0  # Placeholder for the MOBIL model parameter delta
-		self.politeness_factor = politeness_factor
-		self.lane_change_duration = lane_change_duration
+		self.accel_threshold = accel_threshold  # The acceleration threshold for considering a vehicle to be in a "safe gap"
+		self.brake_threshold = brake_threshold  # The braking threshold for considering a vehicle to be in a "safe gap"
+		self.delta = delta  # Placeholder for the MOBIL model parameter delta
+		self.politeness_factor = politeness_factor  # A factor used to determine the probability of a lane change
 
-	def can_change_lane(self, vehicle, direction: str, dt: float) -> bool:
+	def can_change_lane(self, vehicle, direction: str, dt) -> bool:
 		"""
 		Checks whether a vehicle can change lanes based on the MOBIL (Minimizing Overall Braking Induced by Lane changes) model.
 
@@ -119,131 +115,64 @@ class MOBIL:
 			return False
 
 		# Calculate the acceleration gain from the lane change
-		acceleration_gain = self._calculate_acceleration_gain(vehicle, target_lane, dt)
+		delta_acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, target_lane)
 
 		# Calculate the lane change gain (how much the vehicle can benefit from the lane change)
-		lane_change_gain = self._calculate_lane_change_gain(vehicle, current_lane, target_lane)
+		delta_acc_curr_rear = self.__calculate_acceleration_curr(vehicle)
 
 		# Calculate the total incentive of the lane change
-		incentive = acceleration_gain + self.beta * lane_change_gain
+		incentive = delta_acc_lc_self + self.politeness_factor * (delta_acc_curr_rear + delta_acc_lc_rear)
 
 		# Return whether the incentive is greater than the minimum threshold
-		return incentive > self.delta
+		return incentive > self.delta * dt
 
-	def _calculate_acceleration_gain(self, vehicle, adjacent_lane, dt: float) -> float:
+	@staticmethod
+	def __calculate_acceleration_lc(vehicle, adjacent_lane) -> Tuple[float, float]:
 		"""
 		Calculates the acceleration gain from changing lanes based on the MOBIL model.
 
-		:param vehicle: the vehicle that is attempting to change lanes
-		:param adjacent_lane: the lane that the vehicle is attempting to switch to
-		:param dt: the time step for the simulation
-		:return: the acceleration gain from changing lanes
+		:param vehicle: The vehicle that is attempting to change lanes.
+		:param adjacent_lane: The lane that the vehicle is attempting to switch to.
+		:return: The acceleration gain from changing lanes.
 		"""
 		# Get the speed of the target vehicle, the vehicle immediately in front of it in the adjacent lane,
 		# and the vehicle immediately behind it in the current lane.
-		v_a = vehicle.speed
 		front_vehicle_adjacent = vehicle.get_adjacent_lead_vehicle(adjacent_lane)
+		vehicle_after_lc = copy.copy(vehicle)
+		delta_acc_lc_rear = 0
+
 		if front_vehicle_adjacent is not None:
-			v_b = front_vehicle_adjacent.speed
+			front_vehicle = copy.copy(front_vehicle_adjacent)
+			if front_vehicle.rear_vehicle is not None:
+				rear_vehicle = copy.copy(front_vehicle.rear_vehicle)
+				rear_vehicle.front_vehicle = vehicle_after_lc
+				delta_acc_lc_rear = rear_vehicle.get_acceleration() - rear_vehicle.acc
+			else:
+				rear_vehicle = None
 		else:
-			v_b = v_a
-		v_f = vehicle.rear_vehicle.speed
+			front_vehicle = None
+			rear_vehicle = None
 
-		# Calculate the difference in speed between the target vehicle and the vehicle behind it.
-		delta_v = v_a - v_f
+		vehicle_after_lc.front_vehicle = front_vehicle
+		vehicle_after_lc.rear_vehicle = rear_vehicle
 
-		# Calculate the acceleration of the target vehicle.
-		a = vehicle.get_acceleration()
+		delta_acc_lc = vehicle_after_lc.get_acceleration() - vehicle.acc
 
-		# Calculate the desired acceleration for lane changing using the MOBIL model.
-		if delta_v <= 0:
-			# If the target vehicle is slower than the vehicle behind it, then the target vehicle should
-			# attempt to accelerate to match the speed of the vehicle in front of it.
-			a_star = self.accel_threshold * (v_b - v_a) + self.brake_threshold * (v_a - v_f)
-		else:
-			# If the target vehicle is faster than the vehicle behind it, then the target vehicle should
-			# attempt to maintain a safe distance from the vehicle in front of it.
-			a_star = self.accel_threshold * (v_b - v_a) + self.brake_threshold * (v_a - v_f - delta_v)
+		return delta_acc_lc, delta_acc_lc_rear
 
-		# Cap the acceleration gain between the maximum acceleration and maximum deceleration values.
-		acc_gain = max(min(a_star - a, self.max_acc), self.max_dec)
-
-		# Scale the acceleration gain by the time step for the simulation.
-		return acc_gain * dt
-
-	def _calculate_lane_change_gain(self, vehicle, current_lane, adjacent_lane) -> float:
+	@staticmethod
+	def __calculate_acceleration_curr(vehicle) -> float:
 		"""
 		Calculates the gain from changing lanes to the given adjacent lane.
 
 		:param vehicle: The vehicle that wants to change lanes.
-		:param current_lane: The lane the vehicle is currently in.
-		:param adjacent_lane: The lane to consider for lane changing.
 		:return: The gain from changing lanes to the given adjacent lane.
 		"""
-		# Check if the adjacent lane is to the left or to the right of the current lane
-		if adjacent_lane == current_lane.left_lane:
-			# Calculate the lane change gain for the left adjacent lane
-			# by subtracting the density of right neighbors in the adjacent lane
-			# from the density of left neighbors in the current lane
-			left_gain = self.politeness_factor * current_lane.get_neighbor_density(vehicle, 'left') \
-			            - adjacent_lane.get_neighbor_density(vehicle, 'right')
-			return max(left_gain, 0)
+		delta_acc_rear = 0
 
-		elif adjacent_lane == current_lane.right_lane:
-			# Calculate the lane change gain for the right adjacent lane
-			# by subtracting the density of left neighbors in the adjacent lane
-			# from the density of right neighbors in the current lane
-			right_gain = self.politeness_factor * current_lane.get_neighbor_density(vehicle, 'right') \
-			             - adjacent_lane.get_neighbor_density(vehicle, 'left')
-			return max(right_gain, 0)
+		if vehicle.rear_vehicle is not None:
+			if vehicle.front_vehicle is not None:
+				rear_vehicle = copy.copy(vehicle.front_vehicle)
+				delta_acc_rear = rear_vehicle.get_acceleration() - rear_vehicle.acc
 
-		else:
-			# Raise an error if the provided lane is not an adjacent lane
-			raise ValueError("Provided lane is not an adjacent lane.")
-
-	def _get_lane_change_direction(self, vehicle, left_lane, right_lane,
-	                               dt: float) -> str:
-		"""
-		Determines the direction of the lane change (left, right, or none) based on the MOBIL model
-
-		:param vehicle: The vehicle to check for a lane change
-		:param left_lane: The lane to the left of the current lane
-		:param right_lane: The lane to the right of the current lane
-		:param dt: The time step of the simulation
-		:return: The direction of the lane change, either 'left', 'right', or 'none'
-		"""
-		# Check if changing lanes to the left lane is possible
-		if left_lane and self.can_change_lane(vehicle, 'left', dt):
-			return 'left'
-
-		# Check if changing lanes to the right lane is possible
-		if right_lane and self.can_change_lane(vehicle, 'right', dt):
-			return 'right'
-
-		return 'none'
-
-	def get_braking_rate(self, vehicle, dt: float) -> float:
-		"""
-		Calculates the braking rate of a vehicle based on its current acceleration and velocity
-
-		:param vehicle: The vehicle to calculate the braking rate for
-		:param dt: The time step of the simulation
-		:return: The braking rate of the vehicle
-		"""
-		# Calculate the current acceleration of the vehicle
-		curr_acc = (vehicle.speed - vehicle.front_vehicle.speed) / dt
-
-		# Calculate the maximum deceleration rate of the vehicle
-		max_dec = min(-self.max_acc, -vehicle.speed / dt)
-
-		# If the current acceleration is greater than the maximum deceleration rate, return 0
-		if curr_acc > max_dec:
-			return 0.0
-
-		# Calculate the difference between the current acceleration and the maximum deceleration rate
-		delta_acc = max_dec - curr_acc
-
-		# Calculate the braking rate of the vehicle
-		braking_rate = self.delta * delta_acc / self.max_dec
-
-		return braking_rate
+		return delta_acc_rear

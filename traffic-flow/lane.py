@@ -30,10 +30,20 @@ class Lane(ABC):
 		self.type = lane_type
 
 
-# class MainLane(Lane):
-# 	def __init__(self):
-# 		super().__init__()
-# 		self.type = 'Main'
+class MainLane(Lane):
+	def __init__(self, length, start, end, lane_type,
+	             left_lane=None, right_lane=None, **settings):
+		super().__init__(length, start, end, lane_type,
+		                 left_lane, right_lane, **settings)
+		self.type = 'Main'
+
+
+class Ramp(Lane):
+	def __init__(self, length, start, end, lane_type,
+	             left_lane=None, right_lane=None, **settings):
+		super().__init__(length, start, end, lane_type,
+		                 left_lane, right_lane, **settings)
+		self.type = 'Ramp'
 
 
 if __name__ == '__main__':

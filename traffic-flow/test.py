@@ -145,5 +145,44 @@ class VehicleTest(unittest.TestCase):
 		# Perform additional assertions if needed
 
 
+class MOBILTests(unittest.TestCase):
+
+	def setUp(self) -> None:
+		self.lane1 = Lane(length=3000, max_speed=50, start=0, end=3000, lane_type='Main')
+		self.lane2 = Lane(length=3000, max_speed=50, start=0, end=3000, lane_type='Main')
+		self.lane1.right_lane = self.lane2
+		self.lane2.left_lane = self.lane1
+
+		self.lane1.fleet = Fleet()
+		self.lane2.fleet = Fleet()
+
+	def test_can_change_lane(self):
+		mobil = MOBIL(accel_threshold=0.5, brake_threshold=-3.0, delta=1, politeness_factor=0.3)
+
+		with open('settings.json') as fp:
+			settings = json.load(fp)
+			settings_vehicle = settings["Vehicle"]
+		# Create an instance of the Vehicle class
+		vehicle1 = HV(vehicle_id=1, init_speed=20, init_lane=self.lane1, init_pos=50, init_acc=0, **settings_vehicle["HV"])
+		vehicle2 = HV(vehicle_id=2, init_speed=20, init_lane=self.lane2, init_pos=0, init_acc=0, **settings_vehicle["HV"])
+		self.lane1.fleet.add_vehicle(vehicle1)
+		self.lane2.fleet.add_vehicle(vehicle2)
+
+		dt = 0.1
+
+		# Test case: Vehicle1 can change to the right lane
+		self.assertTrue(mobil.can_change_lane(vehicle1, 'right', dt))
+
+		# Test case: Vehicle2 can change to the right lane
+		self.assertTrue(mobil.can_change_lane(vehicle2, 'left', dt))
+
+		# Test case: Vehicle1 cannot change lanes without neighboring lanes
+		self.lane1.right_lane = None
+		self.assertFalse(mobil.can_change_lane(vehicle1, 'left', dt))
+		self.assertFalse(mobil.can_change_lane(vehicle1, 'right', dt))
+
+# Add more test methods for other methods in the MOBIL class
+
+
 if __name__ == '__main__':
 	unittest.main()
