@@ -32,7 +32,7 @@ class Platoon(object):
 		"""
 		return len(self.vehicles) >= self.max_size
 
-	def update(self, dt: float):
+	def get_acceleration(self, dt):
 		"""
 		Updates the position, speed, and acceleration of each vehicle in the platoon based on the current state of the
 		platoon and the road.
@@ -40,20 +40,15 @@ class Platoon(object):
 		:param dt: The time step to use for the update.
 		"""
 		# Update the acceleration, speed, and position of each vehicle in the platoon
-		for i, vehicle in enumerate(self.vehicles):
-			if i == 0:  # Leader vehicle
-				# TODO: Lead vehicle in a platoon will behave different from following vehicles
-				vehicle.acceleration = vehicle.get_acceleration()
-			else:
-				vehicle.acceleration = vehicle.get_acceleration()
+		acc_lead = self.lead_vehicle.get_acceleration()
+		acc_list = self.control()
+		acc_list.insert(0, acc_lead)
+		return acc_list
 
-			vehicle.speed += vehicle.acceleration * dt
-			vehicle.position += vehicle.speed * dt
-
-		# Update the front and rear vehicles
-		self.lead_vehicle = self.vehicles[0]
-		self.last_vehicle = self.vehicles[-1]
-		"""Complete"""
+	def control(self) -> List[float]:
+		"""Control method of the platoon"""
+		# TODO: Complete the control method, or introduce control method from outside
+		pass
 
 	def add_vehicle(self, vehicle: Vehicle) -> bool:
 		"""
