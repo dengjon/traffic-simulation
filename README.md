@@ -1,9 +1,11 @@
 # Introduction
 This repository is created for beginners to implement traffic flow simulation and the main part of this repository is under development.
 
+This repository is **under development !!!**. If you unfortunately find it, just go away and **don't waste time on it**!
+
 # Code structure
 
-`platoon-control`: Single-lane platoon simulation with IDM.
+`platoon-control/`: Single-lane platoon simulation with IDM.
 
 `traffic flow/`: Multi-lane traffic flow simulation with IDM car-following model and MOBIL lane-changing model.
 
@@ -66,12 +68,37 @@ This repository is created for beginners to implement traffic flow simulation an
     - `num_vehicles`: The number of vehicles in the platoon.
 
   - **Methods:**
-
     - `add_vehicle(vehicle)`: Adds a new vehicle to the platoon.
     - `remove_vehicle(vehicle)`: Removes a vehicle from the platoon.
     - `split_platoon(vehicle)`: Splits the platoon into two separate platoons at the given vehicle.
-
     
+
+
+
+**unittest**
+
+Problems:
+
+> ImportError: cannot import name 'Vehicle' from partially initialized module 'vehicle' (most likely due to a circular import)
+
+File structure:
+
+- `model.py` 
+
+  - `vehicle.py` 
+    - `platoon.py` 
+
+- `lane.py` 
+
+  - `road.py` 
+
+- `simulation.py` 
+
+- `settings.json` 
+
+  
+
+
 
 
 
