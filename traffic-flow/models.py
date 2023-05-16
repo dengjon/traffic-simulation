@@ -114,6 +114,9 @@ class MOBIL:
 		if target_lane is None:
 			return False
 
+		if not self.__check_safety(vehicle, target_lane):
+			return False
+
 		# Calculate the acceleration gain from the lane change
 		delta_acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, target_lane)
 
@@ -141,8 +144,11 @@ class MOBIL:
 		vehicle_after_lc = copy.copy(vehicle)
 		delta_acc_lc_rear = 0
 
+		# If there is a vehicle in front of the target vehicle in the adjacent lane, then copy it.
 		if front_vehicle_adjacent is not None:
 			front_vehicle = copy.copy(front_vehicle_adjacent)
+
+			# If there is a vehicle behind the target vehicle in the current lane, then copy it.
 			if front_vehicle.rear_vehicle is not None:
 				rear_vehicle = copy.copy(front_vehicle.rear_vehicle)
 				rear_vehicle.front_vehicle = vehicle_after_lc
@@ -153,9 +159,11 @@ class MOBIL:
 			front_vehicle = None
 			rear_vehicle = None
 
+		# Update the front and rear vehicles of the target vehicle after the lane change.
 		vehicle_after_lc.front_vehicle = front_vehicle
 		vehicle_after_lc.rear_vehicle = rear_vehicle
 
+		# Calculate the acceleration gain from the lane change.
 		delta_acc_lc = vehicle_after_lc.get_acceleration() - vehicle.acc
 
 		return delta_acc_lc, delta_acc_lc_rear
@@ -176,3 +184,30 @@ class MOBIL:
 				delta_acc_rear = rear_vehicle.get_acceleration() - rear_vehicle.acc
 
 		return delta_acc_rear
+
+	def __check_safety(self, vehicle, adjacent_lane):
+		"""
+		Checks whether a vehicle can change lanes based on the MOBIL model.
+		:param vehicle: vehicle to check for a lane change
+		:param adjacent_lane: adjacent lane to check for a lane change
+		:return: None
+		"""
+		# Get the speed of the target vehicle, the vehicle immediately in front of it in the adjacent lane,
+		front_vehicle_adjacent = vehicle.get_adjacent_lead_vehicle(adjacent_lane)
+		vehicle_curr = copy.copy(vehicle)
+
+		if front_vehicle_adjacent is not None:
+			front_vehicle = copy.copy(front_vehicle_adjacent)
+			vehicle_curr.front_vehicle = front_vehicle
+
+			# check safety of front vehicle
+			if vehicle_curr.get_acceleration() < self.brake_threshold:
+				return False
+
+			# check safety of rear vehicle
+			if front_vehicle.rear_vehicle is not None:
+				rear_vehicle = copy.copy(front_vehicle.rear_vehicle)
+				rear_vehicle.front_vehicle = vehicle_curr
+				if rear_vehicle.get_acceleration() < self.brake_threshold:
+					return False
+		return True

@@ -5,10 +5,12 @@ from typing import Optional
 
 
 class Vehicle(object):
-	def __init__(self, vehicle_id: int, init_speed: int, init_lane: Lane,
+	cnt = 0
+
+	def __init__(self, init_speed: int, init_lane: Optional[Lane],
 	             init_pos: int, init_acc: float, **settings) -> None:
 		# initial state
-		self.id = vehicle_id
+		self.id = Vehicle.cnt
 		self.speed = init_speed
 		self.lane = init_lane
 		self.position = init_pos
@@ -18,6 +20,9 @@ class Vehicle(object):
 		self.front_vehicle: Optional[Vehicle] = None
 		self.rear_vehicle: Optional[Vehicle] = None
 		self.platoon = None
+		self.position_record = []
+		self.speed_record = []
+		self.acc_record = []
 
 		# Parameters to overwrite
 		self.lane_change_indicator = False
@@ -50,16 +55,19 @@ class Vehicle(object):
 		:param time_step: The time step of the simulation in seconds.
 		"""
 		# Update the position of the vehicle based on the current speed and time step
-		self.position += self.speed * time_step + 0.5 * acc * time_step**2
+		self.position += self.speed * time_step + 0.5 * acc * time_step ** 2
 
 		# Update the speed of the vehicle based on the provided acceleration and time step
 		self.speed += acc * time_step
+		self.acc = acc
 
 		# Ensure the speed is within the valid range
 		if self.speed < 0:
 			self.speed = 0  # Set the speed to 0 if it becomes negative
 		elif self.speed > self.lane.max_speed:
 			self.speed = self.lane.max_speed  # Limit the speed to the maximum speed of the lane
+
+		self.__restore_states()
 
 	def get_adjacent_lead_vehicle(self, target_lane: Lane):
 		"""
@@ -109,16 +117,24 @@ class Vehicle(object):
 				front_vehicle = vehicle
 
 		# Add the vehicle to the new lane
-		new_lane.fleet.add_vehicle(self, front_vehicle)
+		new_lane.fleet.add_vehicle(self)
 
 		# Update the vehicle's lane attribute to the new lane
 		self.lane = new_lane
 
+	def __restore_states(self):
+		"""
+		Restore the states of the vehicle to the previous step
+		"""
+		self.position_record.append(self.position)
+		self.speed_record.append(self.speed)
+		self.acc_record.append(self.acc)
+
 
 class HV(Vehicle):
-	def __init__(self, vehicle_id: int, init_speed: int, init_lane: Lane,
+	def __init__(self, init_speed: int, init_lane: Optional[Lane],
 	             init_pos: int, init_acc: float, **settings) -> None:
-		super().__init__(vehicle_id, init_speed, init_lane, init_pos, init_acc, **settings)
+		super().__init__(init_speed, init_lane, init_pos, init_acc, **settings)
 		self.type = 'HV'
 
 	def get_acceleration(self) -> float:
@@ -156,9 +172,9 @@ class HV(Vehicle):
 
 
 class CAV(Vehicle):
-	def __init__(self, vehicle_id: int, init_speed: int, init_lane: Lane,
+	def __init__(self, init_speed: int, init_lane: Optional[Lane],
 	             init_pos: int, init_acc: float, **settings) -> None:
-		super().__init__(vehicle_id, init_speed, init_lane, init_pos, init_acc, **settings)
+		super().__init__(init_speed, init_lane, init_pos, init_acc, **settings)
 		self.type = 'CAV'
 
 	def get_acceleration(self) -> float:
@@ -171,7 +187,7 @@ class CAV(Vehicle):
 
 
 class Truck(Vehicle):
-	def __init__(self, vehicle_id: int, init_speed: int, init_lane: Lane,
+	def __init__(self, init_speed: int, init_lane: Optional[Lane],
 	             init_pos: int, init_acc: float, **settings) -> None:
-		super().__init__(vehicle_id, init_speed, init_lane, init_pos, init_acc, **settings)
+		super().__init__(init_speed, init_lane, init_pos, init_acc, **settings)
 		self.type = 'Truck'

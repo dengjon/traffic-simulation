@@ -2,6 +2,7 @@ import unittest
 from vehicle import *
 from models import *
 from platoon import *
+from lane import *
 from fleet import *
 import json
 
@@ -13,20 +14,19 @@ class __TestFleet(unittest.TestCase):
 		self.fleet2 = Fleet()  # Create a Fleet instance for testing
 
 	def test_add_vehicle(self):
-		lane1 = Lane(length=100, max_speed=50, start=(0, 0), end=(100, 0), lane_type='straight')
+		lane1 = MainLane(length=300, max_speed=30, start=0, end=3000)
 		lane1.fleet = self.fleet1
-		lane2 = Lane(length=100, max_speed=50, start=(0, 0), end=(100, 0), lane_type='straight')
+		lane2 = MainLane(length=300, max_speed=30, start=0, end=3000)
 		lane2.fleet = self.fleet2
-		vehicle1 = Vehicle(vehicle_id=1, init_speed=30, init_lane=lane1, init_pos=0, init_acc=0)
-		vehicle2 = Vehicle(vehicle_id=2, init_speed=20, init_lane=lane2, init_pos=50, init_acc=0)
+		vehicle1 = Vehicle(vehicle_id=1, init_speed=30, init_lane=lane1, init_pos=50, init_acc=0)
+		vehicle2 = Vehicle(vehicle_id=2, init_speed=20, init_lane=lane2, init_pos=0, init_acc=0)
 
 		self.fleet1.add_vehicle(vehicle1)  # Add the first vehicle to the fleet
 		self.fleet2.add_vehicle(vehicle2)  # Add the first vehicle to the fleet
 		self.assertEqual(len(self.fleet1.vehicles), 1)  # Check that the vehicle was added
 		self.assertEqual(len(self.fleet2.vehicles), 1)  # Check that the vehicle was added
 
-		self.fleet1.change_lane(vehicle2,
-		                        target_front_vehicle=vehicle1)  # Add the second vehicle behind the first vehicle
+		self.fleet1.change_lane(vehicle2, lane1)  # Add the second vehicle behind the first vehicle
 		self.assertEqual(len(self.fleet1.vehicles), 2)  # Check that both vehicles were added
 		self.assertEqual(len(self.fleet2.vehicles), 0)
 		self.assertEqual(self.fleet1.vehicles[-1], vehicle2)  # Check that the second vehicle is in the correct position
@@ -65,8 +65,8 @@ class __TestFleet(unittest.TestCase):
 
 class VehicleTest(unittest.TestCase):
 	def setUp(self) -> None:
-		self.lane1 = Lane(length=100, max_speed=50, start=(0, 0), end=(100, 0), lane_type='Main')
-		self.lane2 = Lane(length=100, max_speed=50, start=(0, 0), end=(100, 0), lane_type='Main')
+		self.lane1 = MainLane(length=100, max_speed=50, start=(0, 0), end=(100, 0))
+		self.lane2 = MainLane(length=100, max_speed=50, start=(0, 0), end=(100, 0))
 		self.fleet1 = Fleet()  # Create a Fleet instance for testing
 		self.fleet2 = Fleet()  # Create a Fleet instance for testing
 		self.lane1.fleet = self.fleet1
@@ -148,8 +148,8 @@ class VehicleTest(unittest.TestCase):
 class MOBILTests(unittest.TestCase):
 
 	def setUp(self) -> None:
-		self.lane1 = Lane(length=3000, max_speed=50, start=0, end=3000, lane_type='Main')
-		self.lane2 = Lane(length=3000, max_speed=50, start=0, end=3000, lane_type='Main')
+		self.lane1 = MainLane(length=3000, max_speed=50, start=0, end=3000)
+		self.lane2 = MainLane(length=3000, max_speed=50, start=0, end=3000)
 		self.lane1.right_lane = self.lane2
 		self.lane2.left_lane = self.lane1
 
@@ -157,18 +157,18 @@ class MOBILTests(unittest.TestCase):
 		self.lane2.fleet = Fleet()
 
 	def test_can_change_lane(self):
-		mobil = MOBIL(accel_threshold=0.5, brake_threshold=-3.0, delta=1, politeness_factor=0.3)
+		mobil = MOBIL(accel_threshold=0.5, brake_threshold=-3.0, delta=0.1, politeness_factor=0.3)
 
 		with open('settings.json') as fp:
 			settings = json.load(fp)
 			settings_vehicle = settings["Vehicle"]
 		# Create an instance of the Vehicle class
-		vehicle1 = HV(vehicle_id=1, init_speed=20, init_lane=self.lane1, init_pos=50, init_acc=0, **settings_vehicle["HV"])
-		vehicle2 = HV(vehicle_id=2, init_speed=20, init_lane=self.lane2, init_pos=0, init_acc=0, **settings_vehicle["HV"])
+		vehicle1 = HV(init_speed=20, init_lane=self.lane1, init_pos=1000, init_acc=0, **settings_vehicle["HV"])
+		vehicle2 = HV(init_speed=20, init_lane=self.lane2, init_pos=0, init_acc=0, **settings_vehicle["HV"])
 		self.lane1.fleet.add_vehicle(vehicle1)
 		self.lane2.fleet.add_vehicle(vehicle2)
 
-		dt = 0.1
+		dt = 1
 
 		# Test case: Vehicle1 can change to the right lane
 		self.assertTrue(mobil.can_change_lane(vehicle1, 'right', dt))
