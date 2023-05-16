@@ -1,6 +1,4 @@
 # coding=UTF-8
-import random
-
 import lane
 from platoon import *
 from lane import *
@@ -8,8 +6,6 @@ from vehicle import *
 from fleet import *
 from tqdm import tqdm
 import numpy as np
-import pandas as pd
-from typing import List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 import utils
 
