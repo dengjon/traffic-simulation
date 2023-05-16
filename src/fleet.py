@@ -91,6 +91,33 @@ class Fleet(object):
 				# Update the rear vehicle of the vehicle in front of the vehicle to remove
 				vehicle.rear_vehicle.front_vehicle = vehicle.front_vehicle
 
+	def change_lane(self):
+		"""
+		Changes the lane of the vehicles in the fleet.
+		:return:
+		"""
+		for i, vehicle in enumerate(self.lc_vehicle_list):
+			if self.lc_direction_list[i] == 'left':
+				vehicle.move_to_lane(self.lane.left_lane)
+			elif self.lc_direction_list[i] == 'right':
+				vehicle.move_to_lane(self.lane.right_lane)
+
+	def update_vehicles(self, dt: float):
+		"""
+		Updates the position and speed of all vehicles in the fleet based on the car-following model and lane changing.
+
+		:param dt: The time step for the update.
+		"""
+		acc_list = []  # List to store the calculated accelerations for each vehicle
+
+		for i, vehicle in enumerate(self.vehicles):
+			acc_list.append(vehicle.get_acceleration())  # Placeholder for calculating the acceleration
+
+		for i, vehicle in enumerate(self.vehicles):
+			# Update the vehicle's speed and position based on the acceleration
+			acceleration = acc_list[i]
+			vehicle.update(acceleration, dt)
+
 	def get_lane_change_intention(self, front_veh_list_lc_left: Optional[List[Vehicle]] = None,
 	                              front_veh_list_lc_right: Optional[List[Vehicle]] = None):
 		"""
@@ -163,33 +190,6 @@ class Fleet(object):
 						# Add the vehicle to the list of vehicles that want to change lanes
 						self.lc_vehicle_list.append(vehicle)
 						self.lc_direction_list.append('right')
-
-	def change_lane(self):
-		"""
-		Changes the lane of the vehicles in the fleet.
-		:return:
-		"""
-		for i, vehicle in enumerate(self.lc_vehicle_list):
-			if self.lc_direction_list[i] == 'left':
-				vehicle.move_to_lane(self.lane.left_lane)
-			elif self.lc_direction_list[i] == 'right':
-				vehicle.move_to_lane(self.lane.right_lane)
-
-	def update_vehicles(self, dt: float):
-		"""
-		Updates the position and speed of all vehicles in the fleet based on the car-following model and lane changing.
-
-		:param dt: The time step for the update.
-		"""
-		acc_list = []  # List to store the calculated accelerations for each vehicle
-
-		for i, vehicle in enumerate(self.vehicles):
-			acc_list.append(vehicle.get_acceleration())  # Placeholder for calculating the acceleration
-
-		for i, vehicle in enumerate(self.vehicles):
-			# Update the vehicle's speed and position based on the acceleration
-			acceleration = acc_list[i]
-			vehicle.update(acceleration, dt)
 
 	def get_front_vehicle_list(self, target_lane):
 		"""
