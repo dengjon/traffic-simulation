@@ -4,21 +4,24 @@ from platoon import *
 
 
 class Fleet(object):
-	def __init__(self):
+	def __init__(self, lane=None):
 		"""
 		Initializes a fleet of vehicles.
 		"""
 		self.front_vehicle = None  # Placeholder for the front vehicle
-		self.lane = None  # Placeholder for the lane the fleet is in
+		self.lane = lane  # Placeholder for the lane the fleet is in
 		self.rear_vehicle = None  # Placeholder for the rear vehicle
 		self.vehicles = []  # List to store the vehicles in the fleet
+		self.lc_vehicle_list = []  # List to store the vehicles that want to change lanes
+		self.lc_direction_list = []  # List to store the direction of the lane change for each vehicle
 
-	def add_vehicle(self, vehicle: Vehicle):
+	def add_vehicle(self, vehicle: Vehicle, front_vehicle: Optional[Vehicle] = None):
 		"""
 		Adds a vehicle to the fleet if there is space.
 
 		If target_front_vehicle is None, adds the vehicle as the front vehicle in the fleet.
 
+		:param front_vehicle: The vehicle to add the new vehicle behind.
 		:param vehicle: The vehicle to add.
 		:return:
 		"""
@@ -29,13 +32,13 @@ class Fleet(object):
 			vehicle.lane = self.lane
 			return
 
-		target_front_vehicle = vehicle.get_adjacent_lead_vehicle(self.lane)  # Placeholder for the target front vehicle
+		target_front_vehicle = front_vehicle
 		vehicle.lane = self.lane  # Update the lane of the vehicle.
 		if target_front_vehicle is None:  # No target front vehicle
 			# Add the vehicle as the front vehicle of the fleet
 			self.vehicles.insert(0, vehicle)
 
-			self.front_vehicle.lead_vehicle = vehicle  # Placeholder for setting the lead vehicle property
+			self.front_vehicle.front_vehicle = vehicle  # Placeholder for setting the front vehicle property
 			vehicle.last_vehicle = self.front_vehicle  # Placeholder for setting the last vehicle property
 			self.front_vehicle = vehicle  # Update the front vehicle
 		else:  # Add the vehicle behind the target front vehicle
@@ -88,26 +91,89 @@ class Fleet(object):
 				# Update the rear vehicle of the vehicle in front of the vehicle to remove
 				vehicle.rear_vehicle.front_vehicle = vehicle.front_vehicle
 
-	def change_lane(self, dt: float):
+	def get_lane_change_intention(self, front_veh_list_lc_left: Optional[List[Vehicle]] = None,
+	                              front_veh_list_lc_right: Optional[List[Vehicle]] = None):
 		"""
-		Adds a vehicle to the fleet if there is space for lane changing.
-
-		If target_front_vehicle is None, adds the vehicle as the front vehicle in the fleet.
-
-		:param dt: The time step for the update.
+		Updates the lane change intention of the vehicles in the fleet.
+		:param front_veh_list_lc_left: A list of the front vehicles in the adjacent lanes.
+		:param front_veh_list_lc_right: A list of the front vehicles in the adjacent lanes.
+		:return:
 		"""
 		mobil = MOBIL()  # Create an instance of the MOBIL model
+		if front_veh_list_lc_left is None and front_veh_list_lc_right is None:
+			# If no adjacent lane, return
+			return
 
-		for i, vehicle in enumerate(self.vehicles):
-			# Handle lane changing based on the MOBIL model
-			new_lane = None
-			if mobil.can_change_lane(vehicle, 'left', dt):  # Placeholder for determining if lane change is possible
-				new_lane = vehicle.lane.left_lane  # Placeholder for getting the left neighboring lane
-			elif mobil.can_change_lane(vehicle, 'right', dt):
-				new_lane = vehicle.lane.right_lane
+		if front_veh_list_lc_left is not None and front_veh_list_lc_right is not None:
+			for i, vehicle in enumerate(self.vehicles):
+				front_vehicle_curr_left = front_veh_list_lc_left[i]  # the front vehicle in the left lane
+				front_vehicle_curr_right = front_veh_list_lc_right[i]  # the front vehicle in the right lane
+				if mobil.check_safety(vehicle, front_vehicle_curr_left) and \
+						mobil.check_safety(vehicle, front_vehicle_curr_right):
+					incentive_left = mobil.get_incentive(vehicle,
+					                                     front_vehicle_curr_left)  # Get the incentive to change lanes
+					incentive_right = mobil.get_incentive(vehicle,
+					                                      front_vehicle_curr_right)
+					if incentive_left > incentive_right:
+						if incentive_left > mobil.delta:
+							# Add the vehicle to the list of vehicles that want to change lanes
+							self.lc_vehicle_list.append(vehicle)
+							self.lc_direction_list.append('left')
+					else:
+						if incentive_right > mobil.delta:
+							# Add the vehicle to the list of vehicles that want to change lanes
+							self.lc_vehicle_list.append(vehicle)
+							self.lc_direction_list.append('right')
 
-			if new_lane is not None:
-				vehicle.move_to_lane(new_lane)  # Placeholder for moving the vehicle to the new lane
+				elif mobil.check_safety(vehicle, front_vehicle_curr_left):
+					incentive_left = mobil.get_incentive(vehicle,
+					                                     front_vehicle_curr_left)
+					if incentive_left > mobil.delta:
+						# Add the vehicle to the list of vehicles that want to change lanes
+						self.lc_vehicle_list.append(vehicle)
+						self.lc_direction_list.append('left')
+
+				elif mobil.check_safety(vehicle, front_vehicle_curr_right):
+					incentive_right = mobil.get_incentive(vehicle,
+					                                      front_vehicle_curr_right)
+					if incentive_right > mobil.delta:
+						# Add the vehicle to the list of vehicles that want to change lanes
+						self.lc_vehicle_list.append(vehicle)
+						self.lc_direction_list.append('right')
+
+				else:
+					continue
+		elif front_veh_list_lc_left is not None:
+			for i, vehicle in enumerate(self.vehicles):
+				front_vehicle_curr_left = front_veh_list_lc_left[i]
+				if mobil.check_safety(vehicle, front_vehicle_curr_left):
+					incentive_left = mobil.get_incentive(vehicle,
+					                                     front_vehicle_curr_left)
+					if incentive_left > mobil.delta:
+						# Add the vehicle to the list of vehicles that want to change lanes
+						self.lc_vehicle_list.append(vehicle)
+						self.lc_direction_list.append('left')
+		elif front_veh_list_lc_right is not None:
+			for i, vehicle in enumerate(self.vehicles):
+				front_vehicle_curr_right = front_veh_list_lc_right[i]
+				if mobil.check_safety(vehicle, front_vehicle_curr_right):
+					incentive_right = mobil.get_incentive(vehicle,
+					                                      front_vehicle_curr_right)
+					if incentive_right > mobil.delta:
+						# Add the vehicle to the list of vehicles that want to change lanes
+						self.lc_vehicle_list.append(vehicle)
+						self.lc_direction_list.append('right')
+
+	def change_lane(self):
+		"""
+		Changes the lane of the vehicles in the fleet.
+		:return:
+		"""
+		for i, vehicle in enumerate(self.lc_vehicle_list):
+			if self.lc_direction_list[i] == 'left':
+				vehicle.move_to_lane(self.lane.left_lane)
+			elif self.lc_direction_list[i] == 'right':
+				vehicle.move_to_lane(self.lane.right_lane)
 
 	def update_vehicles(self, dt: float):
 		"""
@@ -125,6 +191,35 @@ class Fleet(object):
 			acceleration = acc_list[i]
 			vehicle.update(acceleration, dt)
 
+	def get_front_vehicle_list(self, target_lane):
+		"""
+		Returns a list of the front vehicles in the target lane.
+
+		:param target_lane: The target lane.
+		:return: A list of the front vehicles in the target lane.
+		"""
+		if target_lane is None:
+			return None
+
+		front_vehicle_list = []
+		start = 0
+		for vehicle_curr in self.vehicles:
+			# find the front vehicle of vehicle_curr in the target lane according to the vehicle's position
+			front_vehicle_curr = None
+			for i, vehicle_target in enumerate(target_lane.fleet.vehicles[start:]):
+				if vehicle_curr.position < vehicle_target.position:
+					# If the vehicle is in front of the target vehicle, set the target vehicle to be the front vehicle
+					front_vehicle_curr = vehicle_target
+					# Update the start index for the next vehicle
+					start = i
+					break
+			if front_vehicle_curr is None:
+				# If no front vehicle, set the front vehicle to be the first vehicle in the target lane
+				start = 0
+			front_vehicle_list.append(front_vehicle_curr)
+
+		return front_vehicle_list
+
 	def get_states(self, state_type: float = 'position'):
 		"""
 		Returns a list of the states of the vehicles in the fleet.
@@ -134,6 +229,7 @@ class Fleet(object):
 		"""
 		assert state_type in ['position', 'speed', 'acceleration', 'gap']
 		state_list = []
+		# Iterate through the vehicles in the fleet and add the state to the list
 		for vehicle in self.vehicles:
 			if state_type == 'position':
 				state_list.append(vehicle.position)
@@ -142,6 +238,7 @@ class Fleet(object):
 			elif state_type == 'acceleration':
 				state_list.append(vehicle.acc)
 			elif state_type == 'gap':
+				# Calculate the gap between the vehicle and the front vehicle
 				if vehicle.front_vehicle is not None:
 					delta_loc = vehicle.front_vehicle.position - vehicle.position
 					gap = delta_loc - vehicle.length

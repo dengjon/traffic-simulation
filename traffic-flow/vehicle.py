@@ -69,7 +69,7 @@ class Vehicle(object):
 
 		self.__restore_states()
 
-	def get_adjacent_lead_vehicle(self, target_lane: Lane):
+	def __get_adjacent_lead_vehicle(self, target_lane: Lane):
 		"""
 		Get the lead vehicle in the target lane which the target vehicle in the current lane is going to follow
 		after lane changing.
@@ -107,17 +107,10 @@ class Vehicle(object):
 		# Remove the vehicle from its current lane
 		self.lane.fleet.remove_vehicle(self)
 
-		# Find the closest front vehicle on the new lane
-		min_dist = float('inf')
-		front_vehicle = None
-		for vehicle in new_lane.fleet.vehicles:
-			delta_dist = vehicle.position - self.position
-			if 0 < delta_dist < min_dist:
-				min_dist = delta_dist
-				front_vehicle = vehicle
+		front_vehicle = self.__get_adjacent_lead_vehicle(new_lane)
 
 		# Add the vehicle to the new lane
-		new_lane.fleet.add_vehicle(self)
+		new_lane.fleet.add_vehicle(self, front_vehicle)
 
 		# Update the vehicle's lane attribute to the new lane
 		self.lane = new_lane

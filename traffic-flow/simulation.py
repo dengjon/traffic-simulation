@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import utils
 
 
-def main(settgings: dict):
+def main():
 	init_speed = 20
 	num_epochs = 1000
 	dt = 0.1
@@ -29,7 +29,13 @@ def main(settgings: dict):
 	# Run simulation
 	for epoch in tqdm(range(num_epochs)):
 		for lane_curr in lane_list:
-			lane_curr.fleet.get_lane_change_intention(dt)
+			front_veh_list_left = lane_curr.fleet.get_front_vehicle_list(lane_curr.left_lane)
+			front_veh_list_right = lane_curr.fleet.get_front_vehicle_list(lane_curr.right_lane)
+			lane_curr.fleet.get_lane_change_intention(front_veh_list_left, front_veh_list_right)
+
+		for lane_curr in lane_list:
+			lane_curr.fleet.change_lane()
+
 		for lane_curr in lane_list:
 			lane_curr.fleet.update_vehicles(dt)
 
@@ -39,4 +45,4 @@ if __name__ == '__main__':
 
 	with open('settings.json', 'r') as f:
 		settings = json.load(f)
-	main(settings)
+	main()

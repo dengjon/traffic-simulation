@@ -89,36 +89,15 @@ class MOBIL:
 		self.delta = delta  # Placeholder for the MOBIL model parameter delta
 		self.politeness_factor = politeness_factor  # A factor used to determine the probability of a lane change
 
-	def can_change_lane(self, vehicle, direction: str, dt) -> bool:
+	def get_incentive(self, vehicle, front_vehicle):
 		"""
-		Checks whether a vehicle can change lanes based on the MOBIL (Minimizing Overall Braking Induced by Lane changes) model.
-
-		:param vehicle: The vehicle to check for a lane change.
-		:param direction: The direction in which the vehicle wants to change lanes. It must be either 'left' or 'right'.
-		:param dt: The time step of the simulation.
-		:return: True if the vehicle can change lanes, False otherwise.
+		Calculates the incentive for a lane change for the specified vehicle.
+		:param vehicle: The vehicle that is attempting to change lanes.
+		:param front_vehicle: The vehicle immediately in front of the vehicle in the targe lane.
+		:return:
 		"""
-
-		# Ensure that direction is valid (either 'left' or 'right')
-		assert direction in ['left', 'right']
-
-		# Get the current lane of the vehicle
-		current_lane = vehicle.lane
-
-		# Determine the lane to which the vehicle wants to change
-		if direction == 'left':
-			target_lane = current_lane.left_lane
-		else:
-			target_lane = current_lane.right_lane
-
-		if target_lane is None:
-			return False
-
-		if not self.__check_safety(vehicle, target_lane):
-			return False
-
 		# Calculate the acceleration gain from the lane change
-		delta_acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, target_lane)
+		delta_acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, front_vehicle)
 
 		# Calculate the lane change gain (how much the vehicle can benefit from the lane change)
 		delta_acc_curr_rear = self.__calculate_acceleration_curr(vehicle)
@@ -126,21 +105,18 @@ class MOBIL:
 		# Calculate the total incentive of the lane change
 		incentive = delta_acc_lc_self + self.politeness_factor * (delta_acc_curr_rear + delta_acc_lc_rear)
 
-		# Return whether the incentive is greater than the minimum threshold
-		return incentive > self.delta * dt
+		return incentive
 
 	@staticmethod
-	def __calculate_acceleration_lc(vehicle, adjacent_lane) -> Tuple[float, float]:
+	def __calculate_acceleration_lc(vehicle, front_vehicle_adjacent) -> Tuple[float, float]:
 		"""
 		Calculates the acceleration gain from changing lanes based on the MOBIL model.
 
 		:param vehicle: The vehicle that is attempting to change lanes.
-		:param adjacent_lane: The lane that the vehicle is attempting to switch to.
 		:return: The acceleration gain from changing lanes.
 		"""
 		# Get the speed of the target vehicle, the vehicle immediately in front of it in the adjacent lane,
 		# and the vehicle immediately behind it in the current lane.
-		front_vehicle_adjacent = vehicle.get_adjacent_lead_vehicle(adjacent_lane)
 		vehicle_after_lc = copy.copy(vehicle)
 		delta_acc_lc_rear = 0
 
@@ -185,15 +161,14 @@ class MOBIL:
 
 		return delta_acc_rear
 
-	def __check_safety(self, vehicle, adjacent_lane):
+	def check_safety(self, vehicle, front_vehicle_adjacent):
 		"""
 		Checks whether a vehicle can change lanes based on the MOBIL model.
 		:param vehicle: vehicle to check for a lane change
-		:param adjacent_lane: adjacent lane to check for a lane change
+		:param front_vehicle_adjacent: vehicle in front of the vehicle in the adjacent lane
 		:return: None
 		"""
 		# Get the speed of the target vehicle, the vehicle immediately in front of it in the adjacent lane,
-		front_vehicle_adjacent = vehicle.get_adjacent_lead_vehicle(adjacent_lane)
 		vehicle_curr = copy.copy(vehicle)
 
 		if front_vehicle_adjacent is not None:

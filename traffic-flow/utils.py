@@ -86,10 +86,12 @@ def generate_vehicle_main(lane_list: List[Lane], configs: dict, permeability: fl
 		if lane_curr.fleet.rear_vehicle is None:
 			# If there is no vehicle in the lane, set the position to 0
 			vehicle_curr.position = 0
+			lane_curr.fleet.add_vehicle(vehicle_curr)
 		else:
 			last_vehicle = lane_curr.fleet.rear_vehicle
 			vehicle_curr.position = last_vehicle.position - headway
-		lane_curr.fleet.add_vehicle(vehicle_curr)
+			lane_curr.fleet.add_vehicle(vehicle_curr, last_vehicle)
+
 
 
 def generate_vehicle_ramp(lane_list: List[Lane], configs, permeability):
