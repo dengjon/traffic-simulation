@@ -108,8 +108,8 @@ class Fleet(object):
 			for i, vehicle in enumerate(self.vehicles):
 				front_vehicle_curr_left = front_veh_list_lc_left[i]  # the front vehicle in the left lane
 				front_vehicle_curr_right = front_veh_list_lc_right[i]  # the front vehicle in the right lane
-				if mobil.check_safety(vehicle, front_vehicle_curr_left) and \
-						mobil.check_safety(vehicle, front_vehicle_curr_right):
+				if mobil.check_lane_changing(vehicle, front_vehicle_curr_left) and \
+						mobil.check_lane_changing(vehicle, front_vehicle_curr_right):
 					incentive_left = mobil.get_incentive(vehicle,
 					                                     front_vehicle_curr_left)  # Get the incentive to change lanes
 					incentive_right = mobil.get_incentive(vehicle,
@@ -125,7 +125,7 @@ class Fleet(object):
 							self.lc_vehicle_list.append(vehicle)
 							self.lc_direction_list.append('right')
 
-				elif mobil.check_safety(vehicle, front_vehicle_curr_left):
+				elif mobil.check_lane_changing(vehicle, front_vehicle_curr_left):
 					incentive_left = mobil.get_incentive(vehicle,
 					                                     front_vehicle_curr_left)
 					if incentive_left > mobil.delta:
@@ -133,7 +133,7 @@ class Fleet(object):
 						self.lc_vehicle_list.append(vehicle)
 						self.lc_direction_list.append('left')
 
-				elif mobil.check_safety(vehicle, front_vehicle_curr_right):
+				elif mobil.check_lane_changing(vehicle, front_vehicle_curr_right):
 					incentive_right = mobil.get_incentive(vehicle,
 					                                      front_vehicle_curr_right)
 					if incentive_right > mobil.delta:
@@ -146,7 +146,7 @@ class Fleet(object):
 		elif front_veh_list_lc_left is not None:
 			for i, vehicle in enumerate(self.vehicles):
 				front_vehicle_curr_left = front_veh_list_lc_left[i]
-				if mobil.check_safety(vehicle, front_vehicle_curr_left):
+				if mobil.check_lane_changing(vehicle, front_vehicle_curr_left):
 					incentive_left = mobil.get_incentive(vehicle,
 					                                     front_vehicle_curr_left)
 					if incentive_left > mobil.delta:
@@ -156,7 +156,7 @@ class Fleet(object):
 		elif front_veh_list_lc_right is not None:
 			for i, vehicle in enumerate(self.vehicles):
 				front_vehicle_curr_right = front_veh_list_lc_right[i]
-				if mobil.check_safety(vehicle, front_vehicle_curr_right):
+				if mobil.check_lane_changing(vehicle, front_vehicle_curr_right):
 					incentive_right = mobil.get_incentive(vehicle,
 					                                      front_vehicle_curr_right)
 					if incentive_right > mobil.delta:
@@ -207,12 +207,13 @@ class Fleet(object):
 			# find the front vehicle of vehicle_curr in the target lane according to the vehicle's position
 			front_vehicle_curr = None
 			for i, vehicle_target in enumerate(target_lane.fleet.vehicles[start:]):
-				if vehicle_curr.position < vehicle_target.position:
-					# If the vehicle is in front of the target vehicle, set the target vehicle to be the front vehicle
+				delta_dist = vehicle_target.position - vehicle_curr.position
+				if delta_dist > 0:
 					front_vehicle_curr = vehicle_target
-					# Update the start index for the next vehicle
-					start = i
+				else:
+					start = i - 1
 					break
+
 			if front_vehicle_curr is None:
 				# If no front vehicle, set the front vehicle to be the first vehicle in the target lane
 				start = 0

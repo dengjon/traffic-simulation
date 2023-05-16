@@ -73,8 +73,8 @@ class ACC(object):
 
 
 class MOBIL:
-	def __init__(self, accel_threshold: float = 0.5, brake_threshold: float = -3.0,
-	             delta: float = 0, politeness_factor: float = 0.3):
+	def __init__(self, accel_threshold: float = 0.5, brake_threshold: float = -2.0,
+	             delta: float = 0.5, politeness_factor: float = 0.3):
 		"""
 		Initializes an instance of the MOBIL (Minimizing Overall Braking Induced by Lane changes) class with the
 		specified parameters.
@@ -97,12 +97,13 @@ class MOBIL:
 		:return:
 		"""
 		# Calculate the acceleration gain from the lane change
-		delta_acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, front_vehicle)
+		acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, front_vehicle)
 
 		# Calculate the lane change gain (how much the vehicle can benefit from the lane change)
 		delta_acc_curr_rear = self.__calculate_acceleration_curr(vehicle)
 
 		# Calculate the total incentive of the lane change
+		delta_acc_lc_self = acc_lc_self - vehicle.get_acceleration()
 		incentive = delta_acc_lc_self + self.politeness_factor * (delta_acc_curr_rear + delta_acc_lc_rear)
 
 		return incentive
@@ -126,9 +127,10 @@ class MOBIL:
 
 			# If there is a vehicle behind the target vehicle in the current lane, then copy it.
 			if front_vehicle.rear_vehicle is not None:
+				acc_rear_before = front_vehicle.rear_vehicle.get_acceleration()
 				rear_vehicle = copy.copy(front_vehicle.rear_vehicle)
 				rear_vehicle.front_vehicle = vehicle_after_lc
-				delta_acc_lc_rear = rear_vehicle.get_acceleration() - rear_vehicle.acc
+				delta_acc_lc_rear = rear_vehicle.get_acceleration() - acc_rear_before
 			else:
 				rear_vehicle = None
 		else:
@@ -140,9 +142,9 @@ class MOBIL:
 		vehicle_after_lc.rear_vehicle = rear_vehicle
 
 		# Calculate the acceleration gain from the lane change.
-		delta_acc_lc = vehicle_after_lc.get_acceleration() - vehicle.acc
+		acc_lc = vehicle_after_lc.get_acceleration()
 
-		return delta_acc_lc, delta_acc_lc_rear
+		return acc_lc, delta_acc_lc_rear
 
 	@staticmethod
 	def __calculate_acceleration_curr(vehicle) -> float:
@@ -155,13 +157,14 @@ class MOBIL:
 		delta_acc_rear = 0
 
 		if vehicle.rear_vehicle is not None:
+			acc_before = vehicle.rear_vehicle.get_acceleration()
 			if vehicle.front_vehicle is not None:
 				rear_vehicle = copy.copy(vehicle.front_vehicle)
-				delta_acc_rear = rear_vehicle.get_acceleration() - rear_vehicle.acc
-
+				delta_acc_rear = rear_vehicle.get_acceleration() - acc_before
+				delta_acc_rear = min(rear_vehicle.max_acc, delta_acc_rear)
 		return delta_acc_rear
 
-	def check_safety(self, vehicle, front_vehicle_adjacent):
+	def check_lane_changing(self, vehicle, front_vehicle_adjacent):
 		"""
 		Checks whether a vehicle can change lanes based on the MOBIL model.
 		:param vehicle: vehicle to check for a lane change
@@ -171,7 +174,15 @@ class MOBIL:
 		# Get the speed of the target vehicle, the vehicle immediately in front of it in the adjacent lane,
 		vehicle_curr = copy.copy(vehicle)
 
-		if front_vehicle_adjacent is not None:
+		if front_vehicle_adjacent is None:
+			# vehicle has no front vehicle has no need to change lane
+			return False
+		else:
+			if front_vehicle_adjacent.rear_vehicle is not None and\
+					front_vehicle_adjacent.rear_vehicle.position > vehicle_curr.position:
+				# vehicle is not the rear vehicle of the lane
+				return False
+
 			front_vehicle = copy.copy(front_vehicle_adjacent)
 			vehicle_curr.front_vehicle = front_vehicle
 
