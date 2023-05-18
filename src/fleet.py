@@ -113,8 +113,21 @@ class Fleet(object):
 		:param dt: The time step for the update.
 		"""
 		acc_list = []  # List to store the calculated accelerations for each vehicle
-
+		platoon = None
 		for i, vehicle in enumerate(self.vehicles):
+			# Check if the vehicle is in a platoon
+			if vehicle.platoon is not None:
+				if vehicle.platoon == platoon:
+					# If the vehicle is in the same platoon as the previous vehicle
+					if vehicle == vehicle.platoon.front_vehicle:
+						# If the vehicle is the front vehicle of the platoon, calculate the acceleration of the platoon
+						acc_list_platoon = vehicle.platoon.get_acceleration()
+						for acc in acc_list_platoon:
+							acc_list.append(acc)
+				else:
+					# If the vehicle is in a different platoon than the previous vehicle
+					platoon = vehicle.platoon
+			# Calculate the acceleration of the vehicle
 			acc_list.append(vehicle.get_acceleration())  # Placeholder for calculating the acceleration
 
 		for i, vehicle in enumerate(self.vehicles):
@@ -137,6 +150,9 @@ class Fleet(object):
 
 		if front_veh_list_lc_left is not None and front_veh_list_lc_right is not None:
 			for i, vehicle in enumerate(self.vehicles):
+				if vehicle.platoon is not None:
+					# If the vehicle is in a platoon, skip the vehicle
+					continue
 				front_vehicle_curr_left = front_veh_list_lc_left[i]  # the front vehicle in the left lane
 				front_vehicle_curr_right = front_veh_list_lc_right[i]  # the front vehicle in the right lane
 				if mobil.check_lane_changing(vehicle, front_vehicle_curr_left) and \
@@ -180,6 +196,9 @@ class Fleet(object):
 					continue
 		elif front_veh_list_lc_left is not None:
 			for i, vehicle in enumerate(self.vehicles):
+				if vehicle.platoon is not None:
+					# If the vehicle is in a platoon, skip the vehicle
+					continue
 				front_vehicle_curr_left = front_veh_list_lc_left[i]
 				if mobil.check_lane_changing(vehicle, front_vehicle_curr_left):
 					incentive_left = mobil.get_incentive(vehicle,
@@ -191,6 +210,9 @@ class Fleet(object):
 						self.lc_direction_list.append('left')
 		elif front_veh_list_lc_right is not None:
 			for i, vehicle in enumerate(self.vehicles):
+				if vehicle.platoon is not None:
+					# If the vehicle is in a platoon, skip the vehicle
+					continue
 				front_vehicle_curr_right = front_veh_list_lc_right[i]
 				if mobil.check_lane_changing(vehicle, front_vehicle_curr_right):
 					incentive_right = mobil.get_incentive(vehicle,
