@@ -36,7 +36,7 @@ def initialize():
 	return lane_list
 
 
-class __TestFleet(unittest.TestCase):
+class TestFleet(unittest.TestCase):
 
 	def setUp(self):
 		lane_list = initialize()
@@ -74,6 +74,11 @@ class VehicleTest(unittest.TestCase):
 
 		# Perform assertions to check if the acceleration is calculated correctly
 		self.assertTrue(acceleration > 0)
+
+		# Test acceleration influenced by obstacle
+		vehicle.obstacle_position = vehicle.position + 100
+		acc_obstacle = vehicle.get_acceleration()
+		self.assertLess(acc_obstacle, acceleration)
 
 	def test_update(self):
 		dt = 1
