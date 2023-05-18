@@ -23,6 +23,7 @@ class Vehicle(object):
 		self.position_record = []
 		self.speed_record = []
 		self.acc_record = []
+		self.in_platoon = False
 
 		# Parameters to overwrite
 		self.lane_change_indicator = False

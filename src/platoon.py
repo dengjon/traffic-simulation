@@ -1,5 +1,5 @@
 from typing import List, Optional
-from vehicle import Vehicle
+from vehicle import *
 
 
 class Platoon(object):
@@ -11,13 +11,13 @@ class Platoon(object):
 		:param last_vehicle: The rear vehicle of the platoon.
 		:param max_size: The maximum number of vehicles that can be in the platoon.
 		"""
-		self.MIN_DISTANCE = 30  # Minimum safety distance
+		self.MIN_DISTANCE = 10  # Minimum safety distance
 		self.vehicles = [lead_vehicle, last_vehicle]  # List of vehicles in the platoon
-		self.num_vehicle = 2    # number of vehicles in the platoon
+		self.num_vehicle = 2  # number of vehicles in the platoon
 		self.lead_vehicle = lead_vehicle  # The leading vehicle in the platoon
 		self.last_vehicle = last_vehicle  # The last vehicle in the platoon
-		self.front_vehicle = lead_vehicle.front_vehicle     # The front vehicle of the platoon
-		self.rear_vehicle = last_vehicle.rear_vehicle       # The rear vehicle of the platoon
+		self.front_vehicle = lead_vehicle.front_vehicle  # The front vehicle of the platoon
+		self.rear_vehicle = last_vehicle.rear_vehicle  # The rear vehicle of the platoon
 		self.max_size = max_size  # The maximum number of vehicles that can be in the platoon
 
 	def is_empty(self) -> bool:
@@ -25,12 +25,6 @@ class Platoon(object):
 		Returns True if the platoon has no vehicles besides the lead vehicle.
 		"""
 		return len(self.vehicles) >= 1
-
-	def is_full(self) -> bool:
-		"""
-		Returns True if the platoon has reached its maximum size.
-		"""
-		return len(self.vehicles) >= self.max_size
 
 	def get_acceleration(self, dt):
 		"""
@@ -57,13 +51,11 @@ class Platoon(object):
 		:param vehicle: The vehicle to add.
 		:return: True if the vehicle was successfully added, False otherwise.
 		"""
-		if not isinstance(vehicle, Vehicle):
+		if not isinstance(vehicle, CAV):
 			return False
-		if self.is_full():
-			raise OverflowError("Platoon is Full!")
-		if not self.can_join_platoon(vehicle):
+		if not self.__can_join_platoon(vehicle):
 			raise ValueError("Can't Join Platoon!")
-		self.vehicles.insert(-1, vehicle)
+		self.vehicles.append(vehicle)
 		self.num_vehicle += 1
 		self.last_vehicle = vehicle
 		vehicle.platoon = self
@@ -77,20 +69,49 @@ class Platoon(object):
 		:return:
 		"""
 		if vehicle == self.lead_vehicle:
-			raise ValueError("Cannot remove the front vehicle")     # cannot remove the front vehicle
+			raise ValueError("Cannot remove the front vehicle")  # cannot remove the front vehicle
 
 		self.vehicles.remove(vehicle)
 		vehicle.platoon = None  # remove the vehicle's platoon reference
 		self.num_vehicle -= 1
 
-	def can_join_platoon(self, vehicle: Vehicle) -> bool:
+	def split(self, vehicle: Vehicle):
+		"""
+		Splits the platoon into two platoons. If the member in the platoon raises a
+		request to leave the platoon, the platoon will be split into two platoons.
+		"""
+		if vehicle == self.lead_vehicle:
+			raise ValueError("Cannot split the front vehicle")
+
+		if vehicle not in self.vehicles:
+			raise ValueError("Vehicle not in the platoon")
+
+		if vehicle == self.last_vehicle:
+			vehicle.platoon = None
+			self.vehicles.remove(vehicle)
+			self.num_vehicle -= 1
+			self.last_vehicle = self.vehicles[-1]
+			return
+
+		if vehicle == self.lead_vehicle:
+			vehicle.platoon = None
+			self.vehicles.remove(vehicle)
+			self.num_vehicle -= 1
+			self.lead_vehicle = self.vehicles[0]
+			return
+
+	def __can_join_platoon(self, vehicle: Vehicle) -> bool:
 		"""
 		Determines whether a vehicle can join the platoon.
 
 		:param vehicle: The vehicle to check.
 		:return: True if the vehicle can join the platoon, False otherwise.
 		"""
-		if self.is_full() or not self.vehicles:
+		if vehicle.in_platoon:
+			# Vehicle is already in a platoon
+			return False
+
+		if self.__is_full() or not self.vehicles:
 			# Platoon is already full or empty
 			return False
 
@@ -105,5 +126,10 @@ class Platoon(object):
 		# All safety checks passed
 		return True
 
+	def __is_full(self) -> bool:
+		"""
+		Determines whether the platoon is full.
 
-
+		:return: True if the platoon is full, False otherwise.
+		"""
+		return self.num_vehicle >= self.max_size

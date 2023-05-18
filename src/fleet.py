@@ -14,6 +14,7 @@ class Fleet(object):
 		self.vehicles = []  # List to store the vehicles in the fleet
 		self.lc_vehicle_list = []  # List to store the vehicles that want to change lanes
 		self.lc_direction_list = []  # List to store the direction of the lane change for each vehicle
+		self.platoons = []  # List to store the platoons in the fleet
 
 	def add_vehicle(self, vehicle: Vehicle, front_vehicle: Optional[Vehicle] = None):
 		"""
@@ -247,3 +248,17 @@ class Fleet(object):
 				else:
 					state_list.append(-1)
 		return state_list
+
+	def __update_platoon(self):
+		"""
+		Check the state of platoons. If there is a platoon, update the platoon.
+		if the platoon has only one vehicle, remove the platoon.
+		if the platoon is split into two platoons, update the platoon.
+		"""
+		for platoon in self.platoons:
+			if len(platoon.vehicles) == 1:
+				platoon.vehicles[0].platoon = None
+				platoon = None
+			else:
+				# TODO: complete the function to update platoon
+				pass
