@@ -93,7 +93,6 @@ def generate_vehicle_main(lane_list: List[Lane], configs: dict, permeability: fl
 			lane_curr.fleet.add_vehicle(vehicle_curr, last_vehicle)
 
 
-
 def generate_vehicle_ramp(lane_list: List[Lane], configs, permeability):
 	"""
 	Generate vehicles on ramp

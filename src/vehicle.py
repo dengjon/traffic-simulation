@@ -77,6 +77,12 @@ class Vehicle(object):
 		:param front_vehicle: the front vehicle in the new lane
 		:param new_lane: the new lane to move to
 		"""
+		if front_vehicle.lane != new_lane:
+			# This circumstance happens when the front vehicle moves to other lanes \
+			# before lane changing of ego vehicle
+			# If the front vehicle is not in the new lane, get new front vehicle in the target lane
+			front_vehicle = self.get_adjacent_front_vehicle(new_lane)
+
 		# Remove the vehicle from its current lane
 		self.lane.fleet.remove_vehicle(self)
 
@@ -98,7 +104,6 @@ class Vehicle(object):
 		# Initialize the lead vehicle and minimum distance to infinity and target vehicle to None
 		lead_vehicle = None
 		min_distance = float('inf')
-		target_vehicle = None
 
 		# Loop through all the vehicles in the target lane
 		for vehicle in target_lane.fleet.vehicles:
