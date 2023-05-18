@@ -1,12 +1,22 @@
 # Introduction
 This repository is created for beginners to implement traffic flow simulation and the main part of this repository is under development.
 
-*Warning*: This repository is **under development !!!**. If you unfortunately find it, just go away and **don't waste time on it**!
+*Warning* ⚠️: This repository is **under development !!!**. If you unfortunately find it, just go away and **don't waste time on it**!
 
 # TODO
 
-1. Modify the lane-changing part. Search the fleet once for each iteration to improve speed.
-2. Complete platoon control in traffic flow simulation.
+1. Modify the lane-changing part. Search the fleet once for each iteration to improve speed. ✅
+   Problem: Lane-changing vehicles still have to search the fleet for their front vehicles.
+   💡：Input the front vehicle and target lane simultaneously. If the front vehicle is `None`, the just set the vehicle to be the lead vehicle of the fleet in the target lane.
+2. Implement ramp lane, where vehicles can come in from outside and get off from main lane.
+   - Forbid lane-changing behavior
+     💡: Set the left and right lane of ramp as `None`
+   - Lane for acceleration and deceleration  beside the main lane
+   - Maximum speed limit: Easy
+   - Maximum length limit: Easy
+   - Mandatory lane-changing behavior at weaving area
+     💡: Add a function to calculate the vehicles' maximum acceleration, which is based on the comparison of vehicles' car-following acceleration and acceleration caused by their destination. For example, a vehicle requiring exit at off-ramp will gradually slow down while approaching the off-ramp and eventually stop waiting for lane-changing opportunities.
+3. Complete platoon control in traffic flow simulation.
 
 # Code structure
 
