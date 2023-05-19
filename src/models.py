@@ -22,17 +22,18 @@ class IDM(object):
 		self.b = b
 		self.s0 = s0
 
-	def get_acceleration(self, v_ego: float, pos_ego: float, vehicle_length: float,
-	                     v_lead: Optional[float] = None, pos_lead: Optional[float] = None) -> float:
+	def get_acceleration(self, v_ego: float, pos_ego: float,
+	                     v_lead: Optional[float] = None, pos_lead: Optional[float] = None,
+	                     veh_length_lead: Optional[float] = None) -> float:
 		"""
 		Calculates the acceleration of a vehicle based on the Intelligent Driver Model (IDM).
 
 		Args:
 			v_ego (float): Speed of the ego vehicle in m/s.
 			pos_ego (float): Position of the ego vehicle in m.
-			vehicle_length (float): Length of the ego vehicle in m.
 			v_lead (float, optional): Speed of the lead vehicle in m/s.
 			pos_lead (float, optional): Position of the lead vehicle in m.
+			veh_length_lead (float, optional): Length of the ego vehicle in m.
 
 		Returns:
 			float: The acceleration of the ego vehicle in m/s^2.
@@ -40,18 +41,21 @@ class IDM(object):
 
 		# The ego vehicle has a front vehicle
 		if v_lead is not None:
-			assert pos_lead is not None
+			assert pos_lead is not None and veh_length_lead is not None
 			# desired distance between two vehicles
 			s_star = self.s0 + max(0, v_ego * self.T + v_ego * (v_ego - v_lead) / (2 * np.sqrt(self.a * self.b)))
 
 			# real distance between two vehicles minus the length of the vehicle
-			real_distance = pos_lead - pos_ego - vehicle_length
+			real_distance = pos_lead - pos_ego - veh_length_lead
 
 			# acceleration
 			acceleration = self.a * (1 - math.pow(v_ego / self.v0, 4) - math.pow(s_star / real_distance, 2))
 		else:
 			# The ego vehicle does not have a front vehicle
 			acceleration = self.a * (1 - math.pow(v_ego / self.v0, 4))
+
+		acceleration = min(acceleration, self.a)
+		acceleration = max(acceleration, -self.b)
 
 		return acceleration
 
@@ -101,77 +105,114 @@ class MOBIL:
 		self.delta = delta  # Placeholder for the MOBIL model parameter delta
 		self.politeness_factor = politeness_factor  # A factor used to determine the probability of a lane change
 
-	def get_incentive(self, vehicle, front_vehicle):
+	def get_incentive(self, idm: IDM, v_ego: float, pos_ego: float, vehicle_length: float,
+	                  v_lead_curr: Optional[float] = None, pos_lead_curr: Optional[float] = None,
+	                  v_rear_curr: Optional[float] = None, pos_rear_curr: Optional[float] = None,
+	                  v_lead_lc: Optional[float] = None, pos_lead_lc: Optional[float] = None,
+	                  v_rear_lc: Optional[float] = None, pos_rear_lc: Optional[float] = None) -> float:
 		"""
-		Calculates the incentive for a lane change for the specified vehicle.
-		:param vehicle: The vehicle that is attempting to change lanes.
-		:param front_vehicle: The vehicle immediately in front of the vehicle in the targe lane.
-		:return:
+		Calculates the incentive of a lane change based on the MOBIL model.
+
+		Args:
+			idm (IDM): The IDM model of the ego vehicle.
+			v_ego (float): Speed of the ego vehicle in m/s.
+			pos_ego (float): Position of the ego vehicle in m.
+			vehicle_length (float): Length of the ego vehicle in m.
+			v_lead_curr (float, optional): Speed of the lead vehicle in the current lane in m/s.
+			pos_lead_curr (float, optional): Position of the lead vehicle in the current lane in m.
+			v_rear_curr (float, optional): Speed of the rear vehicle in the current lane in m/s.
+			pos_rear_curr (float, optional): Position of the rear vehicle in the current lane in m.
+			v_lead_lc (float, optional): Speed of the lead vehicle in the target lane in m/s.
+			pos_lead_lc (float, optional): Position of the lead vehicle in the target lane in m.
+			v_rear_lc (float, optional): Speed of the rear vehicle in the target lane in m/s.
+			pos_rear_lc (float, optional): Position of the rear vehicle in the target lane in m.
+
+		Returns:
+			float: The incentive of the lane change.
 		"""
-		# Calculate the acceleration gain from the lane change
-		acc_lc_self, delta_acc_lc_rear = self.__calculate_acceleration_lc(vehicle, front_vehicle)
+		# Calculate the acceleration impacts of ego vehicle on vehicles in target lane
+		acc_ego_lc, delta_acc_rear_lc = self.__calculate_acceleration_lc(
+			idm, v_ego, pos_ego, vehicle_length, v_lead_lc, pos_lead_lc, v_rear_lc, pos_rear_lc
+		)
 
-		# Calculate the lane change gain (how much the vehicle can benefit from the lane change)
-		delta_acc_curr_rear = self.__calculate_acceleration_curr(vehicle)
+		# Calculate the acceleration impacts of ego vehicle on vehicles in current lane
+		acc_ego_curr, delta_acc_rear_curr = self.__calculate_acceleration_curr(
+			idm, v_ego, pos_ego, vehicle_length, v_lead_curr, pos_lead_curr, v_rear_curr, pos_rear_curr
+		)
 
-		# Calculate the total incentive of the lane change
-		delta_acc_lc_self = acc_lc_self - vehicle.get_acceleration()
-		incentive = delta_acc_lc_self + self.politeness_factor * (delta_acc_curr_rear + delta_acc_lc_rear)
+		# Calculate the incentive of the lane change
+		incentive = acc_ego_lc - acc_ego_curr + self.politeness_factor * (delta_acc_rear_curr + delta_acc_rear_lc)
 
 		return incentive
 
 	@staticmethod
-	def __calculate_acceleration_lc(v_ego: float, pos_ego: float, vehicle_length: float,
+	def __calculate_acceleration_lc(idm: IDM, v_ego: float, pos_ego: float,
+	                                vehicle_length_ego: float,
 	                                v_front: Optional[float] = None, pos_front: Optional[float] = None,
-	                                v_rear: Optional[float] = None, pos_rear: Optional[float] = None):
+	                                vehicle_length_front: Optional[float] = None,
+	                                v_rear: Optional[float] = None, pos_rear: Optional[float] = None) -> tuple[
+		float, float]:
 		"""
 		Calculates the acceleration impacts of ego vehicle on vehicles in target lane if it were to change lanes.
 
+		:param idm: The IDM model used to calculate the acceleration of the ego vehicle.
 		:param v_ego: The speed of the ego vehicle in m/s.
 		:param pos_ego: The position of the ego vehicle in m.
-		:param vehicle_length: The length of the ego vehicle in m.
+		:param vehicle_length_ego: The length of the ego vehicle in m.
 		:param v_front: The speed of the vehicle immediately in front of the ego vehicle in the target lane in m/s.
 		:param pos_front: The position of the vehicle immediately in front of the ego vehicle in the target lane in m.
+		:param vehicle_length_front: The length of the vehicle immediately in front of the ego vehicle in the target lane in m.
 		:param v_rear: The speed of the vehicle immediately behind the ego vehicle in the target lane in m/s.
 		:param pos_rear: The position of the vehicle immediately behind the ego vehicle in the target lane in m.
 		:return: The acceleration impacts of the ego vehicle on vehicles in target lane if it were to change lanes.
 		"""
-		delta_acc_lc_rear = 0
+		delta_acc_lc_rear = 0.0
 
-		idm = IDM()
 		# Calculate the acceleration of the ego vehicle
-		acc_ego = idm.get_acceleration(v_ego, pos_ego, vehicle_length, v_front, pos_front)
+		acc_ego = idm.get_acceleration(v_ego, pos_ego, v_front, pos_front, vehicle_length_front)
 
 		# Calculate the acceleration of the vehicle immediately following the ego vehicle in the target lane
 		if v_rear is not None and pos_rear is not None:
-			acc_rear = idm.get_acceleration(v_rear, pos_rear, vehicle_length, v_front, pos_front)
+			# Calculate the acceleration of the rear vehicle before lane changing
+			acc_rear_before = idm.get_acceleration(v_rear, pos_rear, v_front, pos_front, vehicle_length_front)
 
+			# Calculate the acceleration of the rear vehicle after lane changing
+			acc_rear_after = idm.get_acceleration(v_rear, pos_rear, v_ego, pos_ego, vehicle_length_ego)
 
+			delta_acc_lc_rear = acc_rear_after - acc_rear_before
 
-			acc_rear = idm.get_acceleration(v_rear, pos_rear, vehicle_length, v_ego, pos_ego)
-			delta_acc_lc_rear = acc_rear - v_rear.get_acceleration()
-			delta_acc_lc_rear = min(v_rear.max_acc, delta_acc_lc_rear)
-
-
-		return acc_lc, delta_acc_lc_rear
+		return acc_ego, delta_acc_lc_rear
 
 	@staticmethod
-	def __calculate_acceleration_curr(vehicle) -> float:
+	def __calculate_acceleration_curr(idm: IDM, v_ego: float, pos_ego: float,
+	                                  vehicle_length_ego: float,
+	                                  v_front: Optional[float] = None, pos_front: Optional[float] = None,
+	                                  vehicle_length_front: Optional[float] = None,
+	                                  v_rear: Optional[float] = None, pos_rear: Optional[float] = None) -> tuple[
+		float, float]:
 		"""
-		Calculates the gain from changing lanes to the given adjacent lane.
-
-		:param vehicle: The vehicle that wants to change lanes.
-		:return: The gain from changing lanes to the given adjacent lane.
+		Calculates the acceleration impacts of the ego vehicle on vehicles in the current lane.
+		:param idm: The IDM model used to calculate the acceleration of the ego vehicle.
+		:param v_ego: The speed of the ego vehicle in m/s.
+		:param pos_ego: The position of the ego vehicle in m.
+		:param vehicle_length_ego: The length of the ego vehicle in m.
+		:param v_front: The speed of the vehicle immediately in front of the ego vehicle in the current lane in m/s.
+		:param pos_front: The position of the vehicle immediately in front of the ego vehicle in the current lane in m.
+		:param vehicle_length_front: The length of the vehicle immediately in front of the ego vehicle in the current lane in m.
+		:param v_rear: The speed of the vehicle immediately behind the ego vehicle in the current lane in m/s.
+		:param pos_rear: The position of the vehicle immediately behind the ego vehicle in the current lane in m.
+		:return: The acceleration of the ego vehicle and rear vehicle in the current lane.
 		"""
-		delta_acc_rear = 0
+		delta_acc_curr_rear = 0.0
+		acc_ego = idm.get_acceleration(v_ego, pos_ego, v_front, pos_front, vehicle_length_front)
 
-		if vehicle.rear_vehicle is not None:
-			acc_before = vehicle.rear_vehicle.get_acceleration()
-			if vehicle.front_vehicle is not None:
-				rear_vehicle = copy.copy(vehicle.front_vehicle)
-				delta_acc_rear = rear_vehicle.get_acceleration() - acc_before
-				delta_acc_rear = min(rear_vehicle.max_acc, delta_acc_rear)
-		return delta_acc_rear
+		if v_rear is not None and pos_rear is not None:
+			acc_rear_before = idm.get_acceleration(v_rear, pos_rear, v_ego, pos_ego, vehicle_length_ego)
+			acc_rear_after = idm.get_acceleration(v_rear, pos_rear, v_front, pos_front, vehicle_length_front)
+
+			delta_acc_curr_rear = acc_rear_after - acc_rear_before
+
+		return acc_ego, delta_acc_curr_rear
 
 	def check_lane_changing(self, vehicle, front_vehicle_adjacent):
 		"""

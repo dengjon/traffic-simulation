@@ -19,6 +19,7 @@ class Vehicle(object):
 		self.acc = init_acc
 
 		# Properties to update
+		self.desired_speed = 0
 		self.front_vehicle: Optional[Vehicle] = None
 		self.rear_vehicle: Optional[Vehicle] = None
 		self.platoon = None
@@ -33,8 +34,6 @@ class Vehicle(object):
 		self.type = ''
 
 		# fetch from settings
-		self.desired_speed_main = settings.get('desired_speed_main', 25)  # default desired speed in main lane
-		self.desired_speed_ramp = settings.get('desired_speed_ramp', 16.66)  # default desired speed in ramp
 		self.jam_distance = settings.get('jam_distance', 10)  # default safety distance
 		self.min_gap = settings.get('min_gap', 0)
 		self.max_acc = settings.get('max_acc', 2)
@@ -151,16 +150,11 @@ class Vehicle(object):
 
 		# If the distance between the vehicle and the obstacle less than the desired distance
 		if obstacle_distance < s_star:
-			if self.lane.type == 'Main':
-				# If the vehicle is in the main lane, the desired speed is the desired speed of the main lane
-				acc_obstacle = self.max_acc * (1 - (self.speed / self.desired_speed_main) ** 4 -
-				                               (s_star / max(obstacle_distance, min_distance)) ** 2)
-			elif self.lane.type == 'Ramp':
-				# If the vehicle is in the ramp lane, the desired speed is the desired speed of the ramp lane
-				acc_obstacle = self.max_acc * (1 - (self.speed / self.desired_speed_ramp) ** 4 -
-				                               (s_star / max(obstacle_distance, min_distance)) ** 2)
-			# Placeholder for other scenarios
-		acc_obstacle = np.clip(acc_obstacle, -self.desired_dec, self.max_acc)
+			acc_obstacle = self.max_acc * (1 - (self.speed / self.desired_speed) ** 4 -
+			                               (s_star / max(obstacle_distance, min_distance)) ** 2)
+
+		acc_obstacle = max(acc_obstacle, -self.desired_dec)
+
 		return acc_obstacle
 
 
@@ -176,34 +170,26 @@ class HV(Vehicle):
 
 		:return: The acceleration of the vehicle in meters per second squared.
 		"""
-		v = self.speed
-		s = self.front_vehicle.position - self.position - self.front_vehicle.length if self.front_vehicle else np.inf
-		v_lead = self.front_vehicle.speed if self.front_vehicle else None
 
-		# The ego vehicle has a front vehicle
-		if v_lead is not None:
+		v_ego = self.speed
+		pos_ego = self.position
 
-			# change later
-			if self.lane.type == 'Main':
-				idm = IDM(self.desired_speed_main, self.reaction_time, self.max_acc, self.desired_dec,
-				          self.jam_distance)
-			else:
-				idm = IDM(self.desired_speed_ramp, self.reaction_time, self.max_acc, self.desired_dec,
-				          self.jam_distance)
-			acc = idm.get_acceleration(v, v_lead, s)
+		idm = IDM(self.desired_speed, self.reaction_time, self.max_acc,
+		          self.desired_dec, self.jam_distance)
+
+		if self.front_vehicle is not None:
+			v_lead = self.front_vehicle.speed
+			pos_lead = self.front_vehicle.position
+			veh_length_lead = self.front_vehicle.length
+
+			acc = idm.get_acceleration(v_ego, pos_ego, v_lead, pos_lead, veh_length_lead)
 		else:
-			# The ego vehicle has no front vehicle
-			if self.lane.type == 'Main':
-				acc = self.max_acc * (1 - (v / self.desired_speed_main) ** 4)
-			else:
-				acc = self.max_acc * (1 - (v / self.desired_speed_ramp) ** 4)
-		if acc > self.max_acc:
-			acc = self.max_acc
-		elif acc < -self.desired_dec:
-			acc = -self.desired_dec
+			acc = idm.get_acceleration(v_ego, pos_ego)
 
 		acc_obstacle = self._get_acceleration_obstacle()
+
 		acc = min(acc, acc_obstacle)
+
 		return acc
 
 
