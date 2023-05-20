@@ -5,6 +5,8 @@ This repository is created for beginners to implement traffic flow simulation an
 
 # TODO
 
+## Add features
+
 1. Modify the lane-changing part. Search the fleet once for each iteration to improve speed. ✅
    - Problem: Lane-changing vehicles still have to search the fleet for their front vehicles.
    - 💡：Input the front vehicle and target lane simultaneously. ✅
@@ -20,6 +22,21 @@ This repository is created for beginners to implement traffic flow simulation an
    - Vehicle in a platoon can not change lane
    - Vehicle can request to get off a platoon
    - Small platoons can combine to a bigger one
+4. Set a bottleneck to test the vehicles' lane-changing competence. The three-lane road merges to two-lane road at a specific location.
+
+## Restruct code
+
+Problem: The code in present version is seriously coupled, causing difficulties to further development.
+
+Solutions:
+
+1. `model.py`: Remove usage of other classes. This file functions as the collection of various models, which are independent from other classes.
+2. `vehicle.py`: Vehicles are basic and independent units. Remove `Lane` and `Fleet` used in functions of `Vehicle`.
+3. `structure.py`: Car-following vehicles form doubly linked list, which can append and remove vehicles. `Fleet` and `Platoon` are special doubly linked list. Therefore, it is reasonable to create a `VehicleList` class, which can be inherited by `Fleet` and `Platoon`. Lane changing should not be incoporated in `Fleet`. 
+4. `Road.py`: Road is a collection of lanes. In other words, `Road` is also a link list of `Lane`. When lanes merge or expand, i.e., the number of lane changes, the `Road` can add or remove lanes.
+5. `utils.py`: A collection of various functions.
+   - Check and implement lane changing behavior
+   - Generate vehicles
 
 # Code structure
 
