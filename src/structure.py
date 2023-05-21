@@ -42,9 +42,9 @@ class VehicleList(List[Vehicle]):
 		else:
 			raise Exception("Vehicle not in list")
 
-	def get_vehicle_by_id(self, id: int) -> Optional[Vehicle]:
+	def get_vehicle_by_id(self, veh_id: int) -> Optional[Vehicle]:
 		for vehicle in self:
-			if vehicle.id == id:
+			if vehicle.id == veh_id:
 				return vehicle
 		return None
 
@@ -53,10 +53,10 @@ class VehicleList(List[Vehicle]):
 			return self[index]
 		return None
 
-	def get_vehicle_by_type(self, type: str) -> List[Vehicle]:
+	def get_vehicle_by_type(self, veh_type: str) -> List[Vehicle]:
 		vehicle_list = []
 		for vehicle in self:
-			if vehicle.type == type:
+			if vehicle.type == veh_type:
 				vehicle_list.append(vehicle)
 		return vehicle_list
 
@@ -64,23 +64,39 @@ class VehicleList(List[Vehicle]):
 class Fleet(VehicleList):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.__id = 0
 
-	def get_acceleration(self, dt: float) -> None:
+	def get_acceleration(self, dt: float) -> List[float]:
 		"""
 		Updates the position and speed of all vehicles in the fleet based on the car-following model and lane changing.
 
 		:param dt: The time step for the update.
 		"""
-		acc_list = []   # list of acceleration of all vehicles
+		acc_list = []  # list of acceleration of all vehicles
 		for vehicle in self:
 			if vehicle.platoon is None:
+				# if the vehicle is not in a platoon
 				acc_list.append(vehicle.get_acceleration())
 			else:
-				acc_list.extend(vehicle.platoon.get_acceleration(dt))
+				# if the vehicle is in a platoon
+				platoon = vehicle.platoon
+				# get acceleration of the platoon once
+				if vehicle in platoon[1:]:
+					pass
+				else:
+					acc_list.extend(vehicle.platoon.get_acceleration(dt))
+
+		return acc_list
+
+	def update(self, dt: float) -> None:
+		"""
+		Updates the position and speed of all vehicles in the fleet based on the car-following model and lane changing.
+
+		:param dt: The time step for the update.
+		"""
+		acc_list = self.get_acceleration(dt)
 
 		for i, vehicle in enumerate(self):
-			vehicle.update(acc_list[i], dt)
+			vehicle.update(dt, acc_list[i])
 
 
 class Platoon(VehicleList):
@@ -104,21 +120,22 @@ class Platoon(VehicleList):
 
 	def extend(self, __platoon: 'Platoon') -> None:
 		"""
-		Combine two platoons
+		Extend the current platoon with another platoon, i.e., combine two platoons
 		:param __platoon:
 		:return:
 		"""
 		# check if the platoon is empty
-		if len(self) == 0:
+		if self.is_empty():
 			raise Exception("Empty list cannot extend")
-		if len(__platoon) == 0:
+		if __platoon.is_empty() == 0:
 			raise Exception("Empty list cannot extend")
 		# Create link between two platoons
 		self[-1].rear_vehicle = __platoon[0]
 		__platoon[0].front_vehicle = self[-1]
+
+		for vehicle in __platoon:
+			vehicle.platoon = self
 		super().extend(__platoon)
-		# delete __platoon
-		__platoon = None
 
 	def split(self, __index: int) -> 'Platoon':
 		"""
@@ -140,6 +157,28 @@ class Platoon(VehicleList):
 		else:
 			raise Exception("Index out of range")
 
+	def remove(self, __vehicle: Vehicle) -> None:
+		"""
+		remove vehicles from list
+		:param __vehicle: Vehicle to be removed
+		:return:
+		"""
+		if __vehicle in self:
+			__vehicle.platoon = None
+			super().remove(__vehicle)
+		else:
+			raise Exception("Vehicle not in list")
+
+	def pop(self, __index: int = ...) -> Vehicle:
+		"""
+		remove vehicles from list by __index
+		:param __index: index of the vehicle to be removed
+		:return:
+		"""
+		__vehicle = super().pop(__index)
+		__vehicle.platoon = None
+		return __vehicle
+
 	def get_acceleration(self, dt: float) -> List[float]:
 		"""
 		Updates the position and speed of all vehicles in the platoon based on the car-following model and lane changing.
@@ -156,5 +195,18 @@ class Platoon(VehicleList):
 		acc_list.extend(acc_rest)
 		return acc_list
 
-	def control(self, dt) -> List[float]:
-		pass
+	def control(self, dt: float = 1) -> List[float]:
+		"""Control method of the platoon"""
+		# Placeholder for control method, currently replaced with IDM model
+		acc_list = []
+		if not self.is_empty():
+			for vehicle in self[1:]:
+				acc_list.append(vehicle.get_acceleration())
+		else:
+			raise Exception("Platoon is empty")
+
+		return acc_list
+
+	def is_empty(self) -> bool:
+		"""Check if the platoon is empty"""
+		return len(self) == 0
