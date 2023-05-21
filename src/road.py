@@ -1,9 +1,8 @@
-from typing import Optional
+from typing import Optional, List
 import unittest
-from abc import ABC, abstractmethod
 
 
-class Lane(ABC):
+class Lane(object):
 	def __init__(self, length, start, end, **settings):
 		"""
 		Initializes the properties of a lane.
@@ -38,6 +37,36 @@ class Ramp(Lane):
 	def __init__(self, length, start, end, **settings):
 		super().__init__(length, start, end, **settings)
 		self.type = 'Ramp'
+
+
+class Road(List[Lane]):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+	def append(self, __lane: Lane) -> None:
+		if len(self) > 0:
+			__lane.left_lane = self[-1]
+			self[-1].right_lane = __lane
+		super().append(__lane)
+
+	def remove(self, __lane: Lane) -> None:
+		if __lane.left_lane is not None:
+			__lane.left_lane.right_lane = __lane.right_lane
+		if __lane.right_lane is not None:
+			__lane.right_lane.left_lane = __lane.left_lane
+		super().remove(__lane)
+
+	def get_lane_by_index(self, index: int) -> Optional[Lane]:
+		if index < len(self):
+			return self[index]
+		return None
+
+	def get_lane_by_type(self, lane_type: str) -> List[Lane]:
+		lane_list = []
+		for lane in self:
+			if lane.type == lane_type:
+				lane_list.append(lane)
+		return lane_list
 
 
 if __name__ == '__main__':
