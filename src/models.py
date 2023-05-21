@@ -105,10 +105,13 @@ class MOBIL:
 		self.delta = delta  # Placeholder for the MOBIL model parameter delta
 		self.politeness_factor = politeness_factor  # A factor used to determine the probability of a lane change
 
-	def get_incentive(self, idm: IDM, v_ego: float, pos_ego: float, vehicle_length: float,
+	def get_incentive(self, idm: IDM, v_ego: float, pos_ego: float,
+	                  vehicle_length_ego: float,
 	                  v_lead_curr: Optional[float] = None, pos_lead_curr: Optional[float] = None,
+	                  vehicle_length_lead_curr: Optional[float] = None,
 	                  v_rear_curr: Optional[float] = None, pos_rear_curr: Optional[float] = None,
 	                  v_lead_lc: Optional[float] = None, pos_lead_lc: Optional[float] = None,
+	                  vehicle_length_lead_lc: Optional[float] = None,
 	                  v_rear_lc: Optional[float] = None, pos_rear_lc: Optional[float] = None) -> float:
 		"""
 		Calculates the incentive of a lane change based on the MOBIL model.
@@ -117,12 +120,14 @@ class MOBIL:
 			idm (IDM): The IDM model of the ego vehicle.
 			v_ego (float): Speed of the ego vehicle in m/s.
 			pos_ego (float): Position of the ego vehicle in m.
-			vehicle_length (float): Length of the ego vehicle in m.
+			vehicle_length_ego (float): Length of the ego vehicle in m.
 			v_lead_curr (float, optional): Speed of the lead vehicle in the current lane in m/s.
 			pos_lead_curr (float, optional): Position of the lead vehicle in the current lane in m.
+			vehicle_length_lead_curr (float, optional): Length of the lead vehicle in the current lane in m.
 			v_rear_curr (float, optional): Speed of the rear vehicle in the current lane in m/s.
 			pos_rear_curr (float, optional): Position of the rear vehicle in the current lane in m.
 			v_lead_lc (float, optional): Speed of the lead vehicle in the target lane in m/s.
+			vehicle_length_lead_lc (float, optional): Length of the lead vehicle in the target lane in m.
 			pos_lead_lc (float, optional): Position of the lead vehicle in the target lane in m.
 			v_rear_lc (float, optional): Speed of the rear vehicle in the target lane in m/s.
 			pos_rear_lc (float, optional): Position of the rear vehicle in the target lane in m.
@@ -132,12 +137,16 @@ class MOBIL:
 		"""
 		# Calculate the acceleration impacts of ego vehicle on vehicles in target lane
 		acc_ego_lc, delta_acc_rear_lc = self.__calculate_acceleration_lc(
-			idm, v_ego, pos_ego, vehicle_length, v_lead_lc, pos_lead_lc, v_rear_lc, pos_rear_lc
+			idm, v_ego, pos_ego, vehicle_length_ego,
+			v_lead_lc, pos_lead_lc, vehicle_length_lead_lc,
+			v_rear_lc, pos_rear_lc
 		)
 
 		# Calculate the acceleration impacts of ego vehicle on vehicles in current lane
 		acc_ego_curr, delta_acc_rear_curr = self.__calculate_acceleration_curr(
-			idm, v_ego, pos_ego, vehicle_length, v_lead_curr, pos_lead_curr, v_rear_curr, pos_rear_curr
+			idm, v_ego, pos_ego, vehicle_length_ego,
+			v_lead_curr, pos_lead_curr, vehicle_length_lead_curr,
+			v_rear_curr, pos_rear_curr
 		)
 
 		# Calculate the incentive of the lane change

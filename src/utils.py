@@ -1,9 +1,8 @@
 import random
-import lane
-from platoon import *
-from lane import *
+import road
+from structure import Fleet, Platoon
+from road import *
 from vehicle import *
-from fleet import *
 import numpy as np
 from typing import List, Optional, Tuple, Union
 

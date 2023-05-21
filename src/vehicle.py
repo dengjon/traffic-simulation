@@ -2,7 +2,7 @@ import numpy as np
 
 from models import *
 import copy
-from lane import Lane
+from road import Lane
 from typing import Optional
 
 
@@ -19,7 +19,7 @@ class Vehicle(object):
 		self.acc = init_acc
 
 		# Properties to update
-		self.desired_speed = 0
+		self.desired_speed = 25
 		self.front_vehicle: Optional[Vehicle] = None
 		self.rear_vehicle: Optional[Vehicle] = None
 		self.platoon = None
@@ -86,10 +86,10 @@ class Vehicle(object):
 			front_vehicle = self.get_adjacent_front_vehicle(new_lane)
 
 		# Remove the vehicle from its current lane
-		self.lane.fleet.remove_vehicle(self)
+		self.lane.fleet.remove(self)
 
 		# Add the vehicle to the new lane
-		new_lane.fleet.add_vehicle(self, front_vehicle)
+		new_lane.fleet.append(self, front_vehicle)
 
 		# Update the vehicle's lane attribute to the new lane
 		self.lane = new_lane
@@ -108,7 +108,7 @@ class Vehicle(object):
 		min_distance = float('inf')
 
 		# Loop through all the vehicles in the target lane
-		for vehicle in target_lane.fleet.vehicles:
+		for vehicle in target_lane.fleet:
 
 			# Calculate the relative distance between the current vehicle and the target vehicle
 			relative_dist = vehicle.position - self.position
