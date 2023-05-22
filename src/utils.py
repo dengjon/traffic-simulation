@@ -171,14 +171,14 @@ class Simulator:
 		fleet_adj = adjacent_lane.fleet
 		for vehicle_curr in fleet:
 			# find the front vehicle of vehicle_curr in the target lane according to the vehicle's position
-			front_vehicle_curr = -1
-			rear_vehicle_curr = -1
+			front_vehicle_curr = None
+			rear_vehicle_curr = None
 			for i, vehicle_target in enumerate(fleet_adj):
 				delta_dist = vehicle_target.position - vehicle_curr.position
 				if delta_dist > 0:
-					front_vehicle_curr = i
+					front_vehicle_curr = vehicle_target
 				else:
-					rear_vehicle_curr = i
+					rear_vehicle_curr = vehicle_target
 					break
 
 			front_vehicle_list.append(front_vehicle_curr)
@@ -193,10 +193,10 @@ class Simulator:
 		Get the lane change intention of the vehicles in the fleet.
 
 		:param fleet: The fleet of vehicles.
-		:param front_veh_list_left: index list of the front vehicles in the left adjacent lanes.
-		:param front_veh_list_right: index list of the front vehicles in the right adjacent lanes.
-		:param rear_veh_list_left: index list of the rear vehicles in the left adjacent lanes.
-		:param rear_veh_list_right: index list of the rear vehicles in the right adjacent lanes.
+		:param front_veh_list_left: A list of the front vehicles in the left adjacent lanes.
+		:param front_veh_list_right: A list of the front vehicles in the right adjacent lanes.
+		:param rear_veh_list_left: A list of the rear vehicles in the left adjacent lanes.
+		:param rear_veh_list_right: A list of the rear vehicles in the right adjacent lanes.
 		:return:
 		"""
 		lane_curr = self.road.get_lane_by_index(fleet.lane_id)
@@ -211,24 +211,9 @@ class Simulator:
 				if vehicle.platoon is not None:
 					# if the vehicle is in a platoon, it will not change lane
 					continue
-				if front_veh_list_left[i] == -1:
-					front_vehicle_left = None
-				else:
-					front_vehicle_left = left_lane.fleet[front_veh_list_left[i]]
-				if front_veh_list_right[i] == -1:
-					front_vehicle_right = None
-				else:
-					front_vehicle_right = right_lane.fleet[front_veh_list_right[i]]
-				if rear_veh_list_left[i] == -1:
-					rear_vehicle_left = None
-				else:
-					rear_vehicle_left = left_lane.fleet[rear_veh_list_left[i]]
-				if rear_veh_list_right[i] == -1:
-					rear_vehicle_right = None
-				else:
-					rear_vehicle_right = right_lane.fleet[rear_veh_list_right[i]]
-				incentive_left = vehicle.get_lc_incentive(vehicle, front_vehicle_left, rear_vehicle_left)
-				incentive_right = vehicle.get_lc_incentive(vehicle, front_vehicle_right, rear_vehicle_right)
+
+				incentive_left = vehicle.get_lc_incentive(vehicle, front_veh_list_left[i], rear_veh_list_left[i])
+				incentive_right = vehicle.get_lc_incentive(vehicle, front_veh_list_right[i], rear_veh_list_right[i])
 
 				if incentive_left > incentive_right:
 					if incentive_left > vehicle.lc_threshold:
@@ -244,16 +229,7 @@ class Simulator:
 				if vehicle.platoon is not None:
 					# if the vehicle is in a platoon, it will not change lane
 					continue
-				if front_veh_list_left[i] == -1:
-					front_vehicle = None
-				else:
-					front_vehicle = left_lane.fleet[front_veh_list_left[i]]
-
-				if rear_veh_list_left[i] == -1:
-					rear_vehicle = None
-				else:
-					rear_vehicle = left_lane.fleet[rear_veh_list_left[i]]
-				incentive_left = vehicle.get_lc_incentive(vehicle, front_vehicle, rear_vehicle)
+				incentive_left = vehicle.get_lc_incentive(vehicle, front_veh_list_left[i], rear_veh_list_left[i])
 				if incentive_left > vehicle.lc_threshold:
 					vehicle.lc_intention = 'left'
 					vehicle.lc_front_vehicle = front_veh_list_left[i]
@@ -263,16 +239,8 @@ class Simulator:
 				if vehicle.platoon is not None:
 					# if the vehicle is in a platoon, it will not change lane
 					continue
-				if front_veh_list_right[i] == -1:
-					front_vehicle = None
-				else:
-					front_vehicle = right_lane.fleet[front_veh_list_right[i]]
 
-				if rear_veh_list_right[i] == -1:
-					rear_vehicle = None
-				else:
-					rear_vehicle = right_lane.fleet[rear_veh_list_right[i]]
-				incentive_right = vehicle.get_lc_incentive(vehicle, front_vehicle, rear_vehicle)
+				incentive_right = vehicle.get_lc_incentive(vehicle, front_veh_list_right[i], rear_veh_list_right[i])
 				if incentive_right > vehicle.lc_threshold:
 					vehicle.lc_intention = 'right'
 					vehicle.lc_front_vehicle = front_veh_list_right[i]
@@ -289,10 +257,12 @@ class Simulator:
 		for vehicle in fleet:
 			if vehicle.lc_intention is not None:
 				if vehicle.lc_intention == 'left':
-					lane_left.fleet.insert(vehicle.lc_front_index + 1, vehicle)
+					index = lane_left.fleet.index(vehicle.lc_front_vehicle)
+					lane_left.fleet.insert(index + 1, vehicle)
 					fleet.remove(vehicle)
 					vehicle.lane = lane_left
 				elif vehicle.lc_intention == 'right':
-					lane_right.fleet.insert(vehicle.lc_front_index + 1, vehicle)
+					index = lane_right.fleet.index(vehicle.lc_front_vehicle)
+					lane_right.fleet.insert(index + 1, vehicle)
 					fleet.remove(vehicle)
 					vehicle.lane = lane_right

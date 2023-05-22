@@ -21,7 +21,7 @@ class Vehicle(object):
 		# Properties to update
 		self.lc_threshold = 0.5
 		self.lc_intention = None
-		self.lc_front_index = -1
+		self.lc_front_vehicle = None
 		self.desired_speed = 25
 		self.politeness = 0.5
 		self.front_vehicle: Optional[Vehicle] = None
