@@ -1,8 +1,11 @@
 from typing import Optional, List
+from structure import Fleet
 import unittest
 
 
 class Lane(object):
+	id_counter = 0
+
 	def __init__(self, length, start, end, **settings):
 		"""
 		Initializes the properties of a lane.
@@ -15,6 +18,8 @@ class Lane(object):
 		:param right_lane: The neighboring lane to the right
 		:param capacity: Maximum number of vehicles that can be on the lane
 		"""
+		self.id = Lane.id_counter
+		Lane.id_counter += 1
 		self.length = length
 		self.type = ''
 		self.max_speed = settings.get('max_speed', 120 / 3.6)
@@ -24,7 +29,7 @@ class Lane(object):
 		self.end = end
 		self.left_lane: Optional[Lane] = None
 		self.right_lane: Optional[Lane] = None
-		self.fleet = None
+		self.fleet: Optional[Fleet] = None
 
 
 class MainLane(Lane):

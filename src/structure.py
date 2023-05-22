@@ -17,7 +17,7 @@ class VehicleList(List[Vehicle]):
 		if len(self) == 0:
 			raise Exception("Empty list cannot insert")
 
-		if 0 < __index < len(self):
+		if 0 <= __index < len(self):
 			self[__index - 1].rear_vehicle = __vehicle
 			__vehicle.front_vehicle = self[__index - 1]
 			self[__index].front_vehicle = __vehicle
@@ -126,6 +126,20 @@ class Fleet(VehicleList):
 				else:
 					state_list.append(-1)
 		return state_list
+
+	def get_front_vehicle(self, vehicle: Vehicle):
+		"""
+		Get the front vehicle of the given vehicle in other lanes
+		:param vehicle: vehicle in other lanes
+		:return:
+		"""
+		front_vehicle = None
+		for veh_curr in self:
+			if veh_curr.position - vehicle.position - veh_curr.length > 0:
+				front_vehicle = veh_curr
+			else:
+				break
+		return front_vehicle
 
 
 class Platoon(VehicleList):

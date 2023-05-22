@@ -1,20 +1,16 @@
 import numpy as np
-
 from models import *
 import copy
-from road import Lane
 from typing import Optional
 
 
 class Vehicle(object):
 	cnt = 0
 
-	def __init__(self, init_speed: int, init_lane: Optional[Lane],
-	             init_pos: int, init_acc: float, **settings) -> None:
+	def __init__(self, init_speed: int, init_pos: int, init_acc: float, **settings) -> None:
 		# initial state
 		self.id = Vehicle.cnt
 		self.speed = init_speed
-		self.lane = init_lane
 		self.position = init_pos
 		self.acc = init_acc
 
@@ -24,6 +20,7 @@ class Vehicle(object):
 		self.lc_front_vehicle = None
 		self.desired_speed = 25
 		self.politeness = 0.5
+		self.max_speed = 33.33
 		self.front_vehicle: Optional[Vehicle] = None
 		self.rear_vehicle: Optional[Vehicle] = None
 		self.platoon = None
@@ -71,60 +68,10 @@ class Vehicle(object):
 		# Ensure the speed is within the valid range
 		if self.speed < 0:
 			self.speed = 0  # Set the speed to 0 if it becomes negative
-		elif self.speed > self.lane.max_speed:
-			self.speed = self.lane.max_speed  # Limit the speed to the maximum speed of the lane
+		elif self.speed > self.max_speed:
+			self.speed = self.max_speed  # Limit the speed to the maximum speed of the lane
 
 		self._restore_states()
-
-	def move_to_lane(self, front_vehicle, new_lane: Lane):
-		"""
-		Move the vehicle to a new lane
-
-		:param front_vehicle: the front vehicle in the new lane
-		:param new_lane: the new lane to move to
-		"""
-		if front_vehicle.lane != new_lane:
-			# This circumstance happens when the front vehicle moves to other lanes \
-			# before lane changing of ego vehicle
-			# If the front vehicle is not in the new lane, get new front vehicle in the target lane
-			front_vehicle = self.get_adjacent_front_vehicle(new_lane)
-
-		# Remove the vehicle from its current lane
-		self.lane.fleet.remove(self)
-
-		# Add the vehicle to the new lane
-		new_lane.fleet.append(self, front_vehicle)
-
-		# Update the vehicle's lane attribute to the new lane
-		self.lane = new_lane
-
-	def get_adjacent_front_vehicle(self, target_lane: Lane):
-		"""
-		Get the front vehicle in the target lane which the target vehicle in the current lane is going to follow
-		after lane changing.
-
-		:param target_lane: The target lane that the target vehicle is going to change into.
-		:return: The lead vehicle in the target lane or None if no lead vehicle is found.
-		"""
-
-		# Initialize the lead vehicle and minimum distance to infinity and target vehicle to None
-		lead_vehicle = None
-		min_distance = float('inf')
-
-		# Loop through all the vehicles in the target lane
-		for vehicle in target_lane.fleet:
-
-			# Calculate the relative distance between the current vehicle and the target vehicle
-			relative_dist = vehicle.position - self.position
-
-			# If the relative distance is greater than 0 and less than the minimum distance so far
-			if 0 < relative_dist < min_distance:
-				# Update the minimum distance and the lead vehicle
-				min_distance = relative_dist
-				lead_vehicle = vehicle
-
-		# Return the lead vehicle or None if no lead vehicle is found
-		return lead_vehicle
 
 	def _restore_states(self):
 		"""
@@ -163,9 +110,8 @@ class Vehicle(object):
 
 
 class HV(Vehicle):
-	def __init__(self, init_speed: int, init_lane: Optional[Lane],
-	             init_pos: int, init_acc: float, **settings) -> None:
-		super().__init__(init_speed, init_lane, init_pos, init_acc, **settings)
+	def __init__(self, init_speed: int, init_pos: int, init_acc: float, **settings) -> None:
+		super().__init__(init_speed, init_pos, init_acc, **settings)
 		self.type = 'HV'
 
 	def get_acceleration(self) -> float:
@@ -197,11 +143,13 @@ class HV(Vehicle):
 		return acc
 
 	def get_lc_incentive(self, front_veh_curr: Optional['Vehicle'] = None,
+	                     rear_veh_curr: Optional['Vehicle'] = None,
 	                     front_veh_adj: Optional['Vehicle'] = None,
 	                     rear_veh_adj: Optional['Vehicle'] = None) -> float:
 		"""
 		Calculate the lane changing incentive of the vehicle.
 		:param front_veh_curr: The front vehicle of the target vehicle in the current lane.
+		:param rear_veh_curr: The rear vehicle of the target vehicle in the current lane.
 		:param front_veh_adj: The front vehicle of the target vehicle in the adjacent lane.
 		:param rear_veh_adj: The rear vehicle of the target vehicle in the adjacent lane.
 		:return: The lane changing incentive of the vehicle.
@@ -219,6 +167,14 @@ class HV(Vehicle):
 			lead_pos_curr = front_veh_curr.position
 			lead_length_curr = front_veh_curr.length
 
+		if rear_veh_curr is None:
+			follow_speed_curr = None
+			follow_pos_curr = None
+
+		else:
+			follow_speed_curr = rear_veh_curr.speed
+			follow_pos_curr = rear_veh_curr.position
+
 		if front_veh_adj is None:
 			lead_speed_adj = None
 			lead_pos_adj = None
@@ -231,25 +187,24 @@ class HV(Vehicle):
 		if rear_veh_adj is None:
 			follow_speed_adj = None
 			follow_pos_adj = None
-			follow_length_adj = None
+
 		else:
 			follow_speed_adj = rear_veh_adj.speed
 			follow_pos_adj = rear_veh_adj.position
-			follow_length_adj = rear_veh_adj.length
 
 		incentive = mobil.get_incentive(
 			idm, self.speed, self.position, self.length,
 			lead_speed_curr, lead_pos_curr, lead_length_curr,
+			follow_speed_curr, follow_pos_curr,
 			lead_speed_adj, lead_pos_adj, lead_length_adj,
-			follow_speed_adj, follow_pos_adj, follow_length_adj
+			follow_speed_adj, follow_pos_adj
 		)
 		return incentive
 
 
 class CAV(Vehicle):
-	def __init__(self, init_speed: int, init_lane: Optional[Lane],
-	             init_pos: int, init_acc: float, **settings) -> None:
-		super().__init__(init_speed, init_lane, init_pos, init_acc, **settings)
+	def __init__(self, init_speed: int, init_pos: int, init_acc: float, **settings) -> None:
+		super().__init__(init_speed, init_pos, init_acc, **settings)
 		self.type = 'CAV'
 
 	def get_acceleration(self) -> float:
@@ -262,7 +217,6 @@ class CAV(Vehicle):
 
 
 class Truck(Vehicle):
-	def __init__(self, init_speed: int, init_lane: Optional[Lane],
-	             init_pos: int, init_acc: float, **settings) -> None:
-		super().__init__(init_speed, init_lane, init_pos, init_acc, **settings)
+	def __init__(self, init_speed: int, init_pos: int, init_acc: float, **settings) -> None:
+		super().__init__(init_speed, init_pos, init_acc, **settings)
 		self.type = 'Truck'

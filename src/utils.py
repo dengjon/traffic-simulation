@@ -5,7 +5,8 @@ from structure import Fleet, Platoon
 from road import *
 from vehicle import *
 import numpy as np
-from typing import List, Optional, Tuple, Union, Any
+from typing import List, Optional
+import json
 
 
 def generate_scenario():
@@ -30,7 +31,7 @@ def generate_scenario():
 	# Generate and initialize fleets
 	for lane_curr in lane_list:
 		lane_curr.fleet = Fleet()  # Create a fleet for each lane
-		lane_curr.fleet.lane = lane_curr  # Set the lane of the fleet
+		lane_curr.fleet.lane_id = lane_curr.id  # Set the lane of the fleet
 
 	return lane_list
 
@@ -42,33 +43,35 @@ def generate_vehicles():
 	pass
 
 
-def generate_vehicle_main(lane_list: List[Lane], configs: dict, permeability: float = 0):
+def generate_vehicle_main(lane_list: List[Lane], permeability: float = 0):
 	"""
 	Generate vehicles on main lane
-	:param configs: settings of vehicle
 	:param lane_list:  list of main lane
 	:param permeability: permeability of generating vehicles
 	:return:
 	"""
+	with open('settings.json', 'r') as f:
+		settings = json.load(f)
+	configs = settings['Vehicle']
 	can_add_list = []
 	lambda_param = 1
 	speed = 15
 	headway = np.random.exponential(1 / lambda_param) * 50
 	headway = np.clip(headway, 20, 100)
 	if random.random() < permeability:
-		vehicle_curr = CAV(speed, None, lane_list[0].start, 0, **configs['CAV'])
+		vehicle_curr = CAV(speed, lane_list[0].start, 0, **configs['CAV'])
 	else:
-		vehicle_curr = HV(speed, None, lane_list[0].start, 0, **configs['HV'])
+		vehicle_curr = HV(speed, lane_list[0].start, 0, **configs['HV'])
 
 	for lane_curr in lane_list:
 		vehicle_curr.lane = lane_curr
 		if lane_curr.type == 'Main':
-			last_vehicle: Optional[Vehicle] = lane_curr.fleet.rear_vehicle
-			if last_vehicle is None:
+			if len(lane_curr.fleet) == 0:
 				# If there is no vehicle in the lane, set the position to 0
 				vehicle_curr.position = 0
 				can_add_list.append(lane_curr)
 			else:
+				last_vehicle = lane_curr.fleet[-1]
 				vehicle_curr.position = last_vehicle.position - headway
 				if vehicle_curr.position < lane_curr.start:
 					continue
@@ -83,14 +86,14 @@ def generate_vehicle_main(lane_list: List[Lane], configs: dict, permeability: fl
 	else:
 		# Add vehicle to the lane
 		lane_curr = random.choice(can_add_list)
-		if lane_curr.fleet.rear_vehicle is None:
+		if len(lane_curr.fleet) == 0:
 			# If there is no vehicle in the lane, set the position to 0
 			vehicle_curr.position = 0
-			lane_curr.fleet.add_vehicle(vehicle_curr)
+			lane_curr.fleet.append(vehicle_curr)
 		else:
-			last_vehicle = lane_curr.fleet.rear_vehicle
+			last_vehicle = lane_curr.fleet[-1]
 			vehicle_curr.position = last_vehicle.position - headway
-			lane_curr.fleet.add_vehicle(vehicle_curr, last_vehicle)
+			lane_curr.fleet.append(vehicle_curr)
 
 
 def generate_vehicle_ramp(lane_list: List[Lane], configs, permeability):
@@ -133,20 +136,48 @@ def safety_check(front_vehicle: Vehicle, rear_vehicle: Vehicle):
 
 
 class Simulator:
-	def __init__(self, configs: dict, permeability: float = 0):
+	def __init__(self):
 		self.lane_list = generate_scenario()
-		self.permeability = permeability
+		for i in range(100):
+			generate_vehicle_main(self.lane_list)
 		self.road = Road(self.lane_list)
-		self.configs = configs
+		self.dt = 0.1
 
 	def step(self):
 		"""
 		Step the simulator forward by 1 time step.
 		"""
-		pass
+		for lane_curr in self.road:
+			if lane_curr.left_lane is not None:
+				front_vehicle_list_left, rear_vehicle_list_left = \
+					self.get_adjacent_vehicle(lane_curr.fleet, 'left')
+			else:
+				front_vehicle_list_left = None
+				rear_vehicle_list_left = None
+
+			if lane_curr.right_lane is not None:
+				front_vehicle_list_right, rear_vehicle_list_right = \
+					self.get_adjacent_vehicle(lane_curr.fleet, 'right')
+			else:
+				front_vehicle_list_right = None
+				rear_vehicle_list_right = None
+			self.get_lc_intention(
+				lane_curr.fleet, front_vehicle_list_left, front_vehicle_list_right,
+				rear_vehicle_list_left, rear_vehicle_list_right
+			)
+
+		for lane_curr in self.road:
+			self.change_lane(lane_curr.fleet)
+			for vehicle in lane_curr.fleet:
+				vehicle.lc_front_vehicle = None
+				vehicle.lc_rear_vehicle = None
+				vehicle.lc_intention = None
+
+		for lane_curr in self.road:
+			lane_curr.fleet.update(self.dt)
 
 	def get_adjacent_vehicle(self, fleet: Fleet, direction: str) \
-			-> tuple[list[int], list[int]]:
+			-> tuple[list[Vehicle], list[Vehicle]]:
 		"""
 		Get the front vehicles and rear vehicles in adjacent lane of vehicles in current lane.
 		One vehicle in current lane has one front vehicle in adjacent lane.
@@ -212,8 +243,10 @@ class Simulator:
 					# if the vehicle is in a platoon, it will not change lane
 					continue
 
-				incentive_left = vehicle.get_lc_incentive(vehicle, front_veh_list_left[i], rear_veh_list_left[i])
-				incentive_right = vehicle.get_lc_incentive(vehicle, front_veh_list_right[i], rear_veh_list_right[i])
+				incentive_left = vehicle.get_lc_incentive(vehicle, vehicle.rear_vehicle,
+				                                          front_veh_list_left[i], rear_veh_list_left[i])
+				incentive_right = vehicle.get_lc_incentive(vehicle, vehicle.rear_vehicle,
+				                                           front_veh_list_right[i], rear_veh_list_right[i])
 
 				if incentive_left > incentive_right:
 					if incentive_left > vehicle.lc_threshold:
@@ -229,7 +262,8 @@ class Simulator:
 				if vehicle.platoon is not None:
 					# if the vehicle is in a platoon, it will not change lane
 					continue
-				incentive_left = vehicle.get_lc_incentive(vehicle, front_veh_list_left[i], rear_veh_list_left[i])
+				incentive_left = vehicle.get_lc_incentive(vehicle, vehicle.rear_vehicle,
+				                                          front_veh_list_left[i], rear_veh_list_left[i])
 				if incentive_left > vehicle.lc_threshold:
 					vehicle.lc_intention = 'left'
 					vehicle.lc_front_vehicle = front_veh_list_left[i]
@@ -240,7 +274,8 @@ class Simulator:
 					# if the vehicle is in a platoon, it will not change lane
 					continue
 
-				incentive_right = vehicle.get_lc_incentive(vehicle, front_veh_list_right[i], rear_veh_list_right[i])
+				incentive_right = vehicle.get_lc_incentive(vehicle, vehicle.rear_vehicle,
+				                                           front_veh_list_right[i], rear_veh_list_right[i])
 				if incentive_right > vehicle.lc_threshold:
 					vehicle.lc_intention = 'right'
 					vehicle.lc_front_vehicle = front_veh_list_right[i]
@@ -257,12 +292,28 @@ class Simulator:
 		for vehicle in fleet:
 			if vehicle.lc_intention is not None:
 				if vehicle.lc_intention == 'left':
-					index = lane_left.fleet.index(vehicle.lc_front_vehicle)
-					lane_left.fleet.insert(index + 1, vehicle)
+					if vehicle.lc_front_vehicle is not None:
+						if vehicle.lc_front_vehicle not in lane_left.fleet:
+							vehicle.lc_front_vehicle = lane_left.fleet.get_front_vehicle(vehicle)
+						index = lane_left.fleet.index(vehicle.lc_front_vehicle)
+						lane_left.fleet.insert(index + 1, vehicle)
+					else:
+						if len(lane_left.fleet) == 0:
+							lane_left.fleet.append(vehicle)
+						else:
+							lane_left.fleet.insert(0, vehicle)
 					fleet.remove(vehicle)
 					vehicle.lane = lane_left
 				elif vehicle.lc_intention == 'right':
-					index = lane_right.fleet.index(vehicle.lc_front_vehicle)
-					lane_right.fleet.insert(index + 1, vehicle)
+					if vehicle.lc_front_vehicle is not None:
+						if vehicle.lc_front_vehicle not in lane_right.fleet:
+							vehicle.lc_front_vehicle = lane_right.fleet.get_front_vehicle(vehicle)
+						index = lane_right.fleet.index(vehicle.lc_front_vehicle)
+						lane_right.fleet.insert(index + 1, vehicle)
+					else:
+						if len(lane_right.fleet) == 0:
+							lane_right.fleet.append(vehicle)
+						else:
+							lane_right.fleet.insert(0, vehicle)
 					fleet.remove(vehicle)
 					vehicle.lane = lane_right
