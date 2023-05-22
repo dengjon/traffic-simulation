@@ -1,4 +1,5 @@
-from vehicle import Vehicle
+from vehicle import *
+from road import *
 from typing import List, Optional
 
 
@@ -64,6 +65,7 @@ class VehicleList(List[Vehicle]):
 class Fleet(VehicleList):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
+		self.lane_id = -1
 
 	def get_acceleration(self, dt: float) -> List[float]:
 		"""
@@ -98,11 +100,39 @@ class Fleet(VehicleList):
 		for i, vehicle in enumerate(self):
 			vehicle.update(dt, acc_list[i])
 
+	def get_states(self, state_type: float = 'position'):
+		"""
+		Returns a list of the states of the vehicles in the fleet.
+
+		:param state_type: The type of state to return.
+		:return: A list of the states of the vehicles in the fleet.
+		"""
+		assert state_type in ['position', 'speed', 'acceleration', 'gap']
+		state_list = []
+		# Iterate through the vehicles in the fleet and add the state to the list
+		for vehicle in self:
+			if state_type == 'position':
+				state_list.append(vehicle.position)
+			elif state_type == 'speed':
+				state_list.append(vehicle.speed)
+			elif state_type == 'acceleration':
+				state_list.append(vehicle.acc)
+			elif state_type == 'gap':
+				# Calculate the gap between the vehicle and the front vehicle
+				if vehicle.front_vehicle is not None:
+					delta_loc = vehicle.front_vehicle.position - vehicle.position
+					gap = delta_loc - vehicle.length
+					state_list.append(gap)
+				else:
+					state_list.append(-1)
+		return state_list
+
 
 class Platoon(VehicleList):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.max_size = 0
+		self.MIN_DISTANCE = 10  # Minimum safety distance between vehicles
 
 	def append(self, __vehicle: Vehicle) -> None:
 		"""
@@ -206,6 +236,40 @@ class Platoon(VehicleList):
 			raise Exception("Platoon is empty")
 
 		return acc_list
+
+	def can_join_platoon(self, vehicle: Vehicle) -> bool:
+		"""
+		Determines whether a vehicle can join the platoon.
+
+		:param vehicle: The vehicle to check.
+		:return: True if the vehicle can join the platoon, False otherwise.
+		"""
+		if vehicle.in_platoon:
+			# Vehicle is already in a platoon
+			return False
+
+		if self.is_full() or not self:
+			# Platoon is already full or empty
+			return False
+
+		if not isinstance(vehicle, CAV):
+			# Only cars can join the platoon
+			return False
+
+		if vehicle.position < self[-1].position - vehicle.length - self.MIN_DISTANCE:
+			# Vehicle's speed is too close to the front vehicle
+			return False
+
+		# All safety checks passed
+		return True
+
+	def is_full(self):
+		"""
+		Determines whether the platoon is full.
+
+		:return: True if the platoon is full, False otherwise.
+		"""
+		return len(self) >= self.max_size
 
 	def is_empty(self) -> bool:
 		"""Check if the platoon is empty"""

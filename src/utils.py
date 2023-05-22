@@ -1,10 +1,11 @@
 import random
 import road
+from models import *
 from structure import Fleet, Platoon
 from road import *
 from vehicle import *
 import numpy as np
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Any
 
 
 def generate_scenario():
@@ -129,3 +130,169 @@ def safety_check(front_vehicle: Vehicle, rear_vehicle: Vehicle):
 			is_safe = False
 
 	return is_safe
+
+
+class Simulator:
+	def __init__(self, configs: dict, permeability: float = 0):
+		self.lane_list = generate_scenario()
+		self.permeability = permeability
+		self.road = Road(self.lane_list)
+		self.configs = configs
+
+	def step(self):
+		"""
+		Step the simulator forward by 1 time step.
+		"""
+		pass
+
+	def get_adjacent_vehicle(self, fleet: Fleet, direction: str) \
+			-> tuple[list[int], list[int]]:
+		"""
+		Get the front vehicles and rear vehicles in adjacent lane of vehicles in current lane.
+		One vehicle in current lane has one front vehicle in adjacent lane.
+
+		:param fleet: The fleet of vehicles.
+		:param direction: The direction of adjacent lane.
+		:return: The front vehicle of the vehicle.
+		"""
+		assert direction in ['left', 'right']
+		lane_curr = self.road.get_lane_by_index(fleet.lane_id)
+
+		if direction == 'left':
+			adjacent_lane = lane_curr.left_lane
+		else:
+			adjacent_lane = lane_curr.right_lane
+
+		if adjacent_lane is None:
+			raise ValueError('No adjacent lane in the direction of {}.'.format(direction))
+
+		front_vehicle_list = []
+		rear_vehicle_list = []
+		fleet_adj = adjacent_lane.fleet
+		for vehicle_curr in fleet:
+			# find the front vehicle of vehicle_curr in the target lane according to the vehicle's position
+			front_vehicle_curr = -1
+			rear_vehicle_curr = -1
+			for i, vehicle_target in enumerate(fleet_adj):
+				delta_dist = vehicle_target.position - vehicle_curr.position
+				if delta_dist > 0:
+					front_vehicle_curr = i
+				else:
+					rear_vehicle_curr = i
+					break
+
+			front_vehicle_list.append(front_vehicle_curr)
+			rear_vehicle_list.append(rear_vehicle_curr)
+		return front_vehicle_list, rear_vehicle_list
+
+	def get_lc_intention(self, fleet: Fleet, front_veh_list_left: Optional[List[Vehicle]] = None,
+	                     front_veh_list_right: Optional[List[Vehicle]] = None,
+	                     rear_veh_list_left: Optional[List[Vehicle]] = None,
+	                     rear_veh_list_right: Optional[List[Vehicle]] = None):
+		"""
+		Get the lane change intention of the vehicles in the fleet.
+
+		:param fleet: The fleet of vehicles.
+		:param front_veh_list_left: index list of the front vehicles in the left adjacent lanes.
+		:param front_veh_list_right: index list of the front vehicles in the right adjacent lanes.
+		:param rear_veh_list_left: index list of the rear vehicles in the left adjacent lanes.
+		:param rear_veh_list_right: index list of the rear vehicles in the right adjacent lanes.
+		:return:
+		"""
+		lane_curr = self.road.get_lane_by_index(fleet.lane_id)
+		left_lane = lane_curr.left_lane
+		right_lane = lane_curr.right_lane
+
+		if left_lane is None and right_lane is None:
+			raise ValueError('At least one of the adjacent lanes should exist.')
+
+		if left_lane is not None and right_lane is not None:
+			for i, vehicle in enumerate(fleet):
+				if vehicle.platoon is not None:
+					# if the vehicle is in a platoon, it will not change lane
+					continue
+				if front_veh_list_left[i] == -1:
+					front_vehicle_left = None
+				else:
+					front_vehicle_left = left_lane.fleet[front_veh_list_left[i]]
+				if front_veh_list_right[i] == -1:
+					front_vehicle_right = None
+				else:
+					front_vehicle_right = right_lane.fleet[front_veh_list_right[i]]
+				if rear_veh_list_left[i] == -1:
+					rear_vehicle_left = None
+				else:
+					rear_vehicle_left = left_lane.fleet[rear_veh_list_left[i]]
+				if rear_veh_list_right[i] == -1:
+					rear_vehicle_right = None
+				else:
+					rear_vehicle_right = right_lane.fleet[rear_veh_list_right[i]]
+				incentive_left = vehicle.get_lc_incentive(vehicle, front_vehicle_left, rear_vehicle_left)
+				incentive_right = vehicle.get_lc_incentive(vehicle, front_vehicle_right, rear_vehicle_right)
+
+				if incentive_left > incentive_right:
+					if incentive_left > vehicle.lc_threshold:
+						vehicle.lc_intention = 'left'
+						vehicle.lc_front_vehicle = front_veh_list_left[i]
+				else:
+					if incentive_right > vehicle.lc_threshold:
+						vehicle.lc_intention = 'right'
+						vehicle.lc_front_vehicle = front_veh_list_right[i]
+
+		elif front_veh_list_left is not None:
+			for i, vehicle in enumerate(fleet):
+				if vehicle.platoon is not None:
+					# if the vehicle is in a platoon, it will not change lane
+					continue
+				if front_veh_list_left[i] == -1:
+					front_vehicle = None
+				else:
+					front_vehicle = left_lane.fleet[front_veh_list_left[i]]
+
+				if rear_veh_list_left[i] == -1:
+					rear_vehicle = None
+				else:
+					rear_vehicle = left_lane.fleet[rear_veh_list_left[i]]
+				incentive_left = vehicle.get_lc_incentive(vehicle, front_vehicle, rear_vehicle)
+				if incentive_left > vehicle.lc_threshold:
+					vehicle.lc_intention = 'left'
+					vehicle.lc_front_vehicle = front_veh_list_left[i]
+
+		elif front_veh_list_right is not None:
+			for i, vehicle in enumerate(fleet):
+				if vehicle.platoon is not None:
+					# if the vehicle is in a platoon, it will not change lane
+					continue
+				if front_veh_list_right[i] == -1:
+					front_vehicle = None
+				else:
+					front_vehicle = right_lane.fleet[front_veh_list_right[i]]
+
+				if rear_veh_list_right[i] == -1:
+					rear_vehicle = None
+				else:
+					rear_vehicle = right_lane.fleet[rear_veh_list_right[i]]
+				incentive_right = vehicle.get_lc_incentive(vehicle, front_vehicle, rear_vehicle)
+				if incentive_right > vehicle.lc_threshold:
+					vehicle.lc_intention = 'right'
+					vehicle.lc_front_vehicle = front_veh_list_right[i]
+
+	def change_lane(self, fleet: Fleet):
+		"""
+		Change lane according to the lane change intention of the vehicles.
+
+		:param fleet: The fleet of vehicles.
+		"""
+		lane_left = self.road.get_lane_by_index(fleet.lane_id).left_lane
+		lane_right = self.road.get_lane_by_index(fleet.lane_id).right_lane
+
+		for vehicle in fleet:
+			if vehicle.lc_intention is not None:
+				if vehicle.lc_intention == 'left':
+					lane_left.fleet.insert(vehicle.lc_front_index + 1, vehicle)
+					fleet.remove(vehicle)
+					vehicle.lane = lane_left
+				elif vehicle.lc_intention == 'right':
+					lane_right.fleet.insert(vehicle.lc_front_index + 1, vehicle)
+					fleet.remove(vehicle)
+					vehicle.lane = lane_right

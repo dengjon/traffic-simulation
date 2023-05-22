@@ -19,7 +19,11 @@ class Vehicle(object):
 		self.acc = init_acc
 
 		# Properties to update
+		self.lc_threshold = 0.5
+		self.lc_intention = None
+		self.lc_front_index = -1
 		self.desired_speed = 25
+		self.politeness = 0.5
 		self.front_vehicle: Optional[Vehicle] = None
 		self.rear_vehicle: Optional[Vehicle] = None
 		self.platoon = None
@@ -191,6 +195,55 @@ class HV(Vehicle):
 		acc = min(acc, acc_obstacle)
 
 		return acc
+
+	def get_lc_incentive(self, front_veh_curr: Optional['Vehicle'] = None,
+	                     front_veh_adj: Optional['Vehicle'] = None,
+	                     rear_veh_adj: Optional['Vehicle'] = None) -> float:
+		"""
+		Calculate the lane changing incentive of the vehicle.
+		:param front_veh_curr: The front vehicle of the target vehicle in the current lane.
+		:param front_veh_adj: The front vehicle of the target vehicle in the adjacent lane.
+		:param rear_veh_adj: The rear vehicle of the target vehicle in the adjacent lane.
+		:return: The lane changing incentive of the vehicle.
+		"""
+		idm = IDM(self.desired_speed, self.reaction_time, self.max_acc,
+		          self.desired_dec, self.jam_distance)
+		mobil = MOBIL(politeness_factor=self.politeness)
+
+		if front_veh_curr is None:
+			lead_speed_curr = None
+			lead_pos_curr = None
+			lead_length_curr = None
+		else:
+			lead_speed_curr = front_veh_curr.speed
+			lead_pos_curr = front_veh_curr.position
+			lead_length_curr = front_veh_curr.length
+
+		if front_veh_adj is None:
+			lead_speed_adj = None
+			lead_pos_adj = None
+			lead_length_adj = None
+		else:
+			lead_speed_adj = front_veh_adj.speed
+			lead_pos_adj = front_veh_adj.position
+			lead_length_adj = front_veh_adj.length
+
+		if rear_veh_adj is None:
+			follow_speed_adj = None
+			follow_pos_adj = None
+			follow_length_adj = None
+		else:
+			follow_speed_adj = rear_veh_adj.speed
+			follow_pos_adj = rear_veh_adj.position
+			follow_length_adj = rear_veh_adj.length
+
+		incentive = mobil.get_incentive(
+			idm, self.speed, self.position, self.length,
+			lead_speed_curr, lead_pos_curr, lead_length_curr,
+			lead_speed_adj, lead_pos_adj, lead_length_adj,
+			follow_speed_adj, follow_pos_adj, follow_length_adj
+		)
+		return incentive
 
 
 class CAV(Vehicle):

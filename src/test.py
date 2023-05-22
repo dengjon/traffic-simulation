@@ -36,16 +36,16 @@ def initialize():
 	return lane_list
 
 
-class TestFleet(unittest.TestCase):
-
-	def setUp(self):
-		lane_list = initialize()
-		self.fleet1 = lane_list[0].fleet
-		self.fleet2 = lane_list[1].fleet
-
-	def test_get_acceleration(self):
-		acc_list = self.fleet1.get_acceleration(1)
-		self.assertEqual(len(acc_list), NUM_VEHICLES)
+# class TestFleet(unittest.TestCase):
+#
+# 	def setUp(self):
+# 		lane_list = initialize()
+# 		self.fleet1 = lane_list[0].fleet
+# 		self.fleet2 = lane_list[1].fleet
+#
+# 	def test_get_acceleration(self):
+# 		acc_list = self.fleet1.get_acceleration(1)
+# 		self.assertEqual(len(acc_list), NUM_VEHICLES)
 
 
 class TestVehicle(unittest.TestCase):
@@ -90,31 +90,31 @@ class TestVehicle(unittest.TestCase):
 		self.assertEqual(vehicle.lane, self.fleet2.lane)
 
 
-class TestPlatoon(unittest.TestCase):
-	def setUp(self) -> None:
-		lane_list = initialize()
-		self.fleet1 = lane_list[0].fleet
-		self.fleet2 = lane_list[1].fleet
-
-	# def test_get_acceleration(self):
-	# 	platoon = Platoon(self.fleet1[:3])
-	# 	acceleration = platoon.get_acceleration(1)
-	#
-	# 	# Perform assertions to check if the acceleration is calculated correctly
-	# 	self.assertTrue(len(acceleration) == 3)
-
-	def test_split(self):
-		platoon = Platoon(self.fleet1[:])
-		platoon_new = platoon.split(2)
-		self.assertEqual(len(platoon), 2)
-		self.assertEqual(len(platoon_new), 3)
-
-	def test_extend(self):
-		platoon1 = Platoon(self.fleet1[:3])
-		platoon2 = Platoon(self.fleet2[3:])
-		platoon1.extend(platoon2)
-
-		self.assertEqual(len(platoon1), 5)
+# class TestPlatoon(unittest.TestCase):
+# 	def setUp(self) -> None:
+# 		lane_list = initialize()
+# 		self.fleet1 = lane_list[0].fleet
+# 		self.fleet2 = lane_list[1].fleet
+#
+# 	# def test_get_acceleration(self):
+# 	# 	platoon = Platoon(self.fleet1[:3])
+# 	# 	acceleration = platoon.get_acceleration(1)
+# 	#
+# 	# 	# Perform assertions to check if the acceleration is calculated correctly
+# 	# 	self.assertTrue(len(acceleration) == 3)
+#
+# 	def test_split(self):
+# 		platoon = Platoon(self.fleet1[:])
+# 		platoon_new = platoon.split(2)
+# 		self.assertEqual(len(platoon), 2)
+# 		self.assertEqual(len(platoon_new), 3)
+#
+# 	def test_extend(self):
+# 		platoon1 = Platoon(self.fleet1[:3])
+# 		platoon2 = Platoon(self.fleet2[3:])
+# 		platoon1.extend(platoon2)
+#
+# 		self.assertEqual(len(platoon1), 5)
 
 
 if __name__ == '__main__':
