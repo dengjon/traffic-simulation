@@ -26,12 +26,10 @@ class Platoon(object):
 		"""
 		return len(self.vehicles) >= 1
 
-	def get_acceleration(self, dt):
+	def get_acceleration(self):
 		"""
 		Updates the position, speed, and acceleration of each vehicle in the platoon based on the current state of the
 		platoon and the road.
-
-		:param dt: The time step to use for the update.
 		"""
 		# Update the acceleration, speed, and position of each vehicle in the platoon
 		acc_lead = self.lead_vehicle.get_acceleration()
@@ -41,8 +39,11 @@ class Platoon(object):
 
 	def control(self) -> List[float]:
 		"""Control method of the platoon"""
-		# TODO: Complete the control method, or introduce control method from outside
-		pass
+		# Placeholder for control method, currently replaced with IDM model
+		acc_list = []
+		for i in range(1, len(self.vehicles)):
+			acc_list.append(self.vehicles[i].get_acceleration())
+		return acc_list
 
 	def add_vehicle(self, vehicle: Vehicle) -> bool:
 		"""

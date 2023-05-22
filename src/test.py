@@ -36,7 +36,7 @@ def initialize():
 	return lane_list
 
 
-class __TestFleet(unittest.TestCase):
+class TestFleet(unittest.TestCase):
 
 	def setUp(self):
 		lane_list = initialize()
@@ -44,25 +44,17 @@ class __TestFleet(unittest.TestCase):
 		self.fleet2 = lane_list[1].fleet
 
 	def test_add_vehicle(self):
-		vehicle1 = self.fleet1.vehicles[0]
-		vehicle2 = self.fleet1.vehicles[-1]
-		vehicle3 = self.fleet2.vehicles[0]
-
 		self.assertEqual(len(self.fleet1.vehicles), NUM_VEHICLES)  # Check that the vehicle was added
 
-		front_vehicle_list_right = self.fleet1.get_front_vehicle_list(self.fleet2.lane)
+		front_vehicle_list_right, rear_vehicle_list_right =\
+			self.fleet1.get_adjacent_vehicle_list(self.fleet2.lane)
 		self.assertIsNone(front_vehicle_list_right[0])
 
 		# Add the second vehicle behind the first vehicle
-		self.fleet1.get_lane_change_intention(None, front_vehicle_list_right)
+		self.fleet1.get_lane_change_intention(None, front_vehicle_list_right, None, rear_vehicle_list_right)
 		self.fleet1.change_lane()
-		self.assertEqual(len(self.fleet1.vehicles), 0)  # Check that both vehicles were added
-		self.assertEqual(len(self.fleet2.vehicles), 2 * NUM_VEHICLES)  # Check that both vehicles were added
-
-		self.assertEqual(self.fleet2.front_vehicle,
-		                 vehicle1)  # Check that the second vehicle is in the correct position
-		self.assertEqual(self.fleet2.vehicles[-2], vehicle2)  # Check that the second vehicle is in the correct position
-		self.assertEqual(self.fleet2.vehicles[1], vehicle3)  # Check that the second vehicle is in the correct position
+		self.assertEqual(len(self.fleet1.vehicles), NUM_VEHICLES)  # Check that both vehicles were added
+		self.assertEqual(len(self.fleet2.vehicles), NUM_VEHICLES)  # Check that both vehicles were added
 
 	def test_remove_vehicle(self):
 		vehicle = self.fleet2.vehicles[1]
@@ -84,6 +76,11 @@ class VehicleTest(unittest.TestCase):
 		# Perform assertions to check if the acceleration is calculated correctly
 		self.assertTrue(acceleration > 0)
 
+		# Test acceleration influenced by obstacle
+		vehicle.obstacle_position = vehicle.position + 100
+		acc_obstacle = vehicle.get_acceleration()
+		self.assertLess(acc_obstacle, acceleration)
+
 	def test_update(self):
 		dt = 1
 		acc_list = []
@@ -100,8 +97,9 @@ class VehicleTest(unittest.TestCase):
 
 	def test_move_to_lane(self):
 		vehicle = self.fleet1.vehicles[1]
+		front_vehicle = vehicle.get_adjacent_front_vehicle(self.fleet2.lane)
 		# Call the move_to_lane() method with the new lane
-		vehicle.move_to_lane(self.fleet2.lane)
+		vehicle.move_to_lane(front_vehicle, self.fleet2.lane)
 
 		# Perform assertions to check if the vehicle is correctly moved to the new lane
 		self.assertEqual(vehicle.lane, self.fleet2.lane)

@@ -1,3 +1,5 @@
+import numpy as np
+
 from models import *
 import copy
 from lane import Lane
@@ -24,6 +26,7 @@ class Vehicle(object):
 		self.speed_record = []
 		self.acc_record = []
 		self.in_platoon = False
+		self.obstacle_position: float = float('inf')
 
 		# Parameters to overwrite
 		self.lane_change_indicator = False
@@ -68,18 +71,23 @@ class Vehicle(object):
 		elif self.speed > self.lane.max_speed:
 			self.speed = self.lane.max_speed  # Limit the speed to the maximum speed of the lane
 
-		self.__restore_states()
+		self._restore_states()
 
-	def move_to_lane(self, new_lane: Lane):
+	def move_to_lane(self, front_vehicle, new_lane: Lane):
 		"""
 		Move the vehicle to a new lane
 
+		:param front_vehicle: the front vehicle in the new lane
 		:param new_lane: the new lane to move to
 		"""
+		if front_vehicle.lane != new_lane:
+			# This circumstance happens when the front vehicle moves to other lanes \
+			# before lane changing of ego vehicle
+			# If the front vehicle is not in the new lane, get new front vehicle in the target lane
+			front_vehicle = self.get_adjacent_front_vehicle(new_lane)
+
 		# Remove the vehicle from its current lane
 		self.lane.fleet.remove_vehicle(self)
-
-		front_vehicle = self.__get_adjacent_lead_vehicle(new_lane)
 
 		# Add the vehicle to the new lane
 		new_lane.fleet.add_vehicle(self, front_vehicle)
@@ -87,9 +95,9 @@ class Vehicle(object):
 		# Update the vehicle's lane attribute to the new lane
 		self.lane = new_lane
 
-	def __get_adjacent_lead_vehicle(self, target_lane: Lane):
+	def get_adjacent_front_vehicle(self, target_lane: Lane):
 		"""
-		Get the lead vehicle in the target lane which the target vehicle in the current lane is going to follow
+		Get the front vehicle in the target lane which the target vehicle in the current lane is going to follow
 		after lane changing.
 
 		:param target_lane: The target lane that the target vehicle is going to change into.
@@ -99,7 +107,6 @@ class Vehicle(object):
 		# Initialize the lead vehicle and minimum distance to infinity and target vehicle to None
 		lead_vehicle = None
 		min_distance = float('inf')
-		target_vehicle = None
 
 		# Loop through all the vehicles in the target lane
 		for vehicle in target_lane.fleet.vehicles:
@@ -116,13 +123,45 @@ class Vehicle(object):
 		# Return the lead vehicle or None if no lead vehicle is found
 		return lead_vehicle
 
-	def __restore_states(self):
+	def _restore_states(self):
 		"""
 		Restore the states of the vehicle to the previous step
 		"""
 		self.position_record.append(self.position)
 		self.speed_record.append(self.speed)
 		self.acc_record.append(self.acc)
+
+	def _get_acceleration_obstacle(self):
+		"""
+		Calculate the acceleration caused by obstacles, such as road merge, traffic lights, and ramps.
+		The acceleration caused by obstacles is calculated based on the IDM model.
+		The acceleration will be used to compare with car-following acceleration to determine the final acceleration.
+		"""
+		acc_obstacle = float('inf')
+		# The distance between the vehicle and the obstacle can be very small, so we need to avoid zero division
+		min_distance = 1  # Placeholder of the minimum distance between the vehicle and the obstacle
+		v0 = 0  # The speed of the obstacle is assumed to be 0
+
+		# Calculate the desired distance between the vehicle and the obstacle
+		s_star = min_distance + max(0, self.speed * self.reaction_time + self.speed * (self.speed - v0) /
+		                            (2 * np.sqrt(self.max_acc * self.desired_dec)))
+
+		# Calculate the distance between the vehicle and the obstacle. Vehicle length is not considered here.
+		obstacle_distance = self.obstacle_position - self.position
+
+		# If the distance between the vehicle and the obstacle less than the desired distance
+		if obstacle_distance < s_star:
+			if self.lane.type == 'Main':
+				# If the vehicle is in the main lane, the desired speed is the desired speed of the main lane
+				acc_obstacle = self.max_acc * (1 - (self.speed / self.desired_speed_main) ** 4 -
+				                               (s_star / max(obstacle_distance, min_distance)) ** 2)
+			elif self.lane.type == 'Ramp':
+				# If the vehicle is in the ramp lane, the desired speed is the desired speed of the ramp lane
+				acc_obstacle = self.max_acc * (1 - (self.speed / self.desired_speed_ramp) ** 4 -
+				                               (s_star / max(obstacle_distance, min_distance)) ** 2)
+			# Placeholder for other scenarios
+		acc_obstacle = np.clip(acc_obstacle, -self.desired_dec, self.max_acc)
+		return acc_obstacle
 
 
 class HV(Vehicle):
@@ -162,6 +201,9 @@ class HV(Vehicle):
 			acc = self.max_acc
 		elif acc < -self.desired_dec:
 			acc = -self.desired_dec
+
+		acc_obstacle = self._get_acceleration_obstacle()
+		acc = min(acc, acc_obstacle)
 		return acc
 
 

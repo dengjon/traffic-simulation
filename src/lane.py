@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 
 
 class Lane(ABC):
-	def __init__(self, length, start, end,
-	             left_lane=None, right_lane=None, **settings):
+	def __init__(self, length, start, end, **settings):
 		"""
 		Initializes the properties of a lane.
 
@@ -24,24 +23,20 @@ class Lane(ABC):
 		self.capacity = settings.get('capacity', 1600)
 		self.start = start
 		self.end = end
-		self.left_lane: Optional[Lane] = left_lane
-		self.right_lane: Optional[Lane] = right_lane
+		self.left_lane: Optional[Lane] = None
+		self.right_lane: Optional[Lane] = None
 		self.fleet = None
 
 
 class MainLane(Lane):
-	def __init__(self, length, start, end,
-	             left_lane=None, right_lane=None, **settings):
-		super().__init__(length, start, end,
-		                 left_lane, right_lane, **settings)
+	def __init__(self, length, start, end, **settings):
+		super().__init__(length, start, end, **settings)
 		self.type = 'Main'
 
 
 class Ramp(Lane):
-	def __init__(self, length, start, end,
-	             left_lane=None, right_lane=None, **settings):
-		super().__init__(length, start, end,
-		                 left_lane, right_lane, **settings)
+	def __init__(self, length, start, end, **settings):
+		super().__init__(length, start, end, **settings)
 		self.type = 'Ramp'
 
 

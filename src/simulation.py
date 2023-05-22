@@ -36,9 +36,12 @@ def main():
 
 	for epoch in tqdm(range(num_epochs)):
 		for lane_curr in lane_list:
-			front_veh_list_left = lane_curr.fleet.get_front_vehicle_list(lane_curr.left_lane)
-			front_veh_list_right = lane_curr.fleet.get_front_vehicle_list(lane_curr.right_lane)
-			lane_curr.fleet.get_lane_change_intention(front_veh_list_left, front_veh_list_right)
+			front_veh_list_left, rear_veh_list_left =\
+				lane_curr.fleet.get_adjacent_vehicle_list(lane_curr.left_lane)
+			front_veh_list_right, rear_veh_list_right =\
+				lane_curr.fleet.get_adjacent_vehicle_list(lane_curr.right_lane)
+			lane_curr.fleet.get_lane_change_intention(front_veh_list_left, front_veh_list_right,
+			                                          rear_veh_list_left, rear_veh_list_right)
 
 		for lane_curr in lane_list:
 			lane_curr.fleet.change_lane()
