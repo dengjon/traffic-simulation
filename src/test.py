@@ -46,11 +46,12 @@ class TestFleet(unittest.TestCase):
 	def test_add_vehicle(self):
 		self.assertEqual(len(self.fleet1.vehicles), NUM_VEHICLES)  # Check that the vehicle was added
 
-		front_vehicle_list_right = self.fleet1.get_front_vehicle_list(self.fleet2.lane)
+		front_vehicle_list_right, rear_vehicle_list_right =\
+			self.fleet1.get_adjacent_vehicle_list(self.fleet2.lane)
 		self.assertIsNone(front_vehicle_list_right[0])
 
 		# Add the second vehicle behind the first vehicle
-		self.fleet1.get_lane_change_intention(None, front_vehicle_list_right)
+		self.fleet1.get_lane_change_intention(None, front_vehicle_list_right, None, rear_vehicle_list_right)
 		self.fleet1.change_lane()
 		self.assertEqual(len(self.fleet1.vehicles), NUM_VEHICLES)  # Check that both vehicles were added
 		self.assertEqual(len(self.fleet2.vehicles), NUM_VEHICLES)  # Check that both vehicles were added
